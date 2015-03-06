@@ -98,7 +98,7 @@ class ChatServerSpec extends TestKit(ActorSystem("ChatServerSpec", ChatServerSpe
 }
 
 object ChatServerSpec {
-  val configStr = """
+  private[this] val configStr = """
 akka {
   loglevel = "INFO"
 }
