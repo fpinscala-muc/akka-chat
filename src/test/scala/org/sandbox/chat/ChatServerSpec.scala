@@ -28,8 +28,10 @@ import akka.testkit.TestKit
 @RunWith(classOf[org.scalatest.junit.JUnitRunner])
 class ChatServerSpec extends TestKit(ActorSystem("ChatServerSpec", ChatServerSpec.config))
   with ImplicitSender with DefaultTimeout
-  with FlatSpecLike with PropertyChecks with BeforeAndAfterAll with BeforeAndAfterEach
-  with Eventually {
+  with FlatSpecLike with PropertyChecks
+  with BeforeAndAfterAll with BeforeAndAfterEach
+  with Eventually
+{
   override def afterAll = shutdown()
 
   import ChatServer._
