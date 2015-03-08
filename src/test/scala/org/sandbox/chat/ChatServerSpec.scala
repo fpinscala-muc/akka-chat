@@ -92,7 +92,11 @@ class ChatServerSpec extends TestKit(ActorSystem("ChatServerSpec", ChatServerSpe
     server.tell(Join("client"), client)
     forAll("msg") { msg: String =>
       server.tell(Broadcast(msg), client)
-      collect(Broadcast(s"client: $msg"))
+      val broadcastMsg = Broadcast(s"client: $msg")
+      collect(broadcastMsg)
+      eventually {
+        assert(client.underlyingActor.messages contains broadcastMsg)
+      }
     }
     eventually {
       assert(client.underlyingActor.messages == messages)
@@ -121,7 +125,7 @@ akka {
 
   trait MessageCollecting {
     var messages = Seq.empty[Broadcast]
-    def collect(msg: Broadcast) = messages = messages ++ Seq(msg)
+    def collect(msg: Broadcast) = messages = messages :+ msg
   }
 
   class MessageCollector(name: String) extends Actor with MessageCollecting {

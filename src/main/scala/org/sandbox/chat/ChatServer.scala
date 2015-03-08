@@ -16,6 +16,7 @@ class ChatServer extends Actor {
     case Join(name) => chatters += sender -> name
     case Leave => chatters -= sender
     case Broadcast(msg) =>
+//      if (msg.size < 10)
       chatters.get(sender) foreach(broadcast(_, msg))
   }
 
