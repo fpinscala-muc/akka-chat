@@ -2,7 +2,7 @@ name := """akka-chat"""
 
 version := "1.0"
 
-scalaVersion := "2.11.5"
+scalaVersion := "2.11.6"
 
 val akkaVersion = "2.3.9"
 val akkaStreamHttpVersion = "1.0-M4"

@@ -9,7 +9,7 @@ object Version {
   val logback              = "1.1.2"
   val scala                = "2.11.5"
   val scalaMock            = "3.2.1"
-  val scalaTest            = "2.2.3"
+  val scalaTest            = "2.2.4"
   val scalaCheck           = "1.12.1"
   val sprayJson            = "1.3.1"
 }
