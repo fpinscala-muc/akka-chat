@@ -1,28 +1,39 @@
 package org.sandbox.chat.http
 
-import akka.http.server.Route
-import akka.http.server.Directives._
+import akka.http.marshalling.ToResponseMarshallable.apply
 import akka.http.model.HttpResponse
-import akka.http.model.StatusCodes._
+import akka.http.server.Directive.addDirectiveApply
+import akka.http.server.Directives.complete
+import akka.http.server.Directives.enhanceRouteWithConcatenation
+import akka.http.server.Directives.path
+import akka.http.server.Directives.segmentStringToPathMatcher
+import akka.http.server.PathMatcher.regex2PathMatcher
+import akka.http.server.Route
+
+class ChatRoutes private(onJoin: String => HttpResponse, onLeave: String => HttpResponse,
+    onBroadcast: (String,String) => HttpResponse, onShutdown: => HttpResponse)
+{
+  import ChatRoutes.StringMatcher
+
+  val routes: Route =
+    path("join" / StringMatcher) { name =>
+      complete(onJoin(name))
+    } ~
+    path("leave" / StringMatcher) { name =>
+      complete(onLeave(name))
+    } ~
+    path("broadcast" / StringMatcher / StringMatcher) { (name, msg) =>
+      complete(onBroadcast(name, msg))
+    } ~
+    path("shutdown" / "shutdown") {
+      complete(onShutdown)
+    }
+}
 
 object ChatRoutes {
+  private val StringMatcher = "(.+)".r
 
-  val route: Route =
-    path("ping") {
-      complete(HttpResponse(OK, entity = "PONG!"))
-    } ~
-    path("order" / IntNumber) { id =>
-      get {
-        complete {
-//          "Received GET request for order " + id
-          HttpResponse(OK, entity = "Received GET request for order " + id)
-        }
-      } ~
-        put {
-          complete {
-//            "Received PUT request for order " + id
-          HttpResponse(NotFound, entity = "Unfortunately, the resource couldn’t be found.")
-          }
-        }
-    }
+  def apply(onJoin: String => HttpResponse, onLeave: String => HttpResponse,
+      onBroadcast: (String,String) => HttpResponse, onShutdown: => HttpResponse): Route =
+    new ChatRoutes(onJoin, onLeave, onBroadcast, onShutdown).routes
 }
