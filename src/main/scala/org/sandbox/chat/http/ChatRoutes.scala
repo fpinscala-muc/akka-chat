@@ -17,29 +17,25 @@ class ChatRoutes private(onJoin: String => HttpResponse, onLeave: String => Http
 {
   import ChatRoutes.StringMatcher
 
+  private def forName(f: String => HttpResponse)(name: String) = complete(f(name))
+
+  private val join = path("join" / StringMatcher)(forName(onJoin))
+  private val leave = path("leave" / StringMatcher)(forName(onLeave))
+  private val poll = path("poll" / StringMatcher)(forName(onPoll))
+  private val broadcast = path("broadcast" / StringMatcher / StringMatcher) { (name, msg) =>
+    complete(onBroadcast(name, msg))
+  }
+  private val shutdown = path("shutdown" / "shutdown") { complete(onShutdown) }
+
   val routes: Route =
-    path("join" / StringMatcher) { name =>
-      complete(onJoin(name))
-    } ~
-    path("leave" / StringMatcher) { name =>
-      complete(onLeave(name))
-    } ~
-    path("broadcast" / StringMatcher / StringMatcher) { (name, msg) =>
-      complete(onBroadcast(name, msg))
-    } ~
-    path("poll" / StringMatcher) { name =>
-      complete(onPoll(name))
-    } ~
-    path("shutdown" / "shutdown") {
-      complete(onShutdown)
-    }
+    join ~ leave ~ broadcast ~ poll ~ shutdown
 }
 
 object ChatRoutes {
   private val StringMatcher = "(.+)".r
 
   def apply(onJoin: String => HttpResponse, onLeave: String => HttpResponse,
-      onBroadcast: (String,String) => HttpResponse,
-      onPoll: String => HttpResponse, onShutdown: => HttpResponse): Route =
+        onBroadcast: (String,String) => HttpResponse,
+        onPoll: String => HttpResponse, onShutdown: => HttpResponse): Route =
     new ChatRoutes(onJoin, onLeave, onBroadcast, onPoll, onShutdown).routes
 }
