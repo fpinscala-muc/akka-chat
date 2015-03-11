@@ -1,14 +1,10 @@
 package org.sandbox.chat.http
 
-import scala.concurrent.duration.DurationInt
-
-import org.sandbox.chat.ChatClient
 import org.sandbox.chat.ChatServer
 
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.actor.Props
-import akka.actor.actorRef2Scala
 import akka.http.Http
 import akka.http.server.Route
 import akka.stream.ActorFlowMaterializer
@@ -23,7 +19,7 @@ object HttpChatApp extends App {
 
   val chatServerActions = new HttpChatServerActions(chatServer, system)
   import chatServerActions._
-  val chatRoutes = ChatRoutes(onJoin, onLeave, onBroadcast, onShutdown)
+  val chatRoutes = ChatRoutes(onJoin, onLeave, onBroadcast, onPoll, onShutdown)
 
   implicit val materializer = ActorFlowMaterializer()
 
