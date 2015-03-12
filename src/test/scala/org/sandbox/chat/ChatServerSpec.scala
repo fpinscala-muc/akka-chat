@@ -45,23 +45,33 @@ class ChatServerSpec extends TestKit(ActorSystem("ChatServerSpec", ChatServerSpe
   override def afterEach =
     system.stop(server)
 
+  private def join(name: String) = {
+    server ! Join(name)
+    expectMsg(Joined)
+  }
+
+  private def leave = {
+    server ! Leave
+    expectMsg(Left)
+  }
+
   behavior of "ChatServer"
 
   it should "broadcast an incoming single Broadcast message to a joined actor" in {
-    server ! Join("testClient")
+    join("testClient")
     server ! Broadcast("bollocks")
     expectMsg(Broadcast("testClient: bollocks"))
   }
 
   it should "not broadcast incoming Broadcast messages to a left actor" in {
-    server ! Join("testClient")
-    server ! Leave
+    join("testClient")
+    leave
     server ! Broadcast("bollocks")
     expectNoMsg
   }
 
   it should "broadcast incoming Broadcast messages to a joined actor" in new MessageCollecting {
-    server ! Join("testClient")
+    join("testClient")
     server ! Broadcast("bollocks1")
     server ! Broadcast("bollocks2")
     receiveWhile(1 second) {

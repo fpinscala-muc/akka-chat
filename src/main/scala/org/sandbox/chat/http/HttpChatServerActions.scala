@@ -1,10 +1,18 @@
 package org.sandbox.chat.http
 
+import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
+import scala.reflect.ClassTag
+
 import org.sandbox.chat.ChatServer.Broadcast
+import org.sandbox.chat.ChatServer.BroadcastAck
 import org.sandbox.chat.ChatServer.Join
+import org.sandbox.chat.ChatServer.JoinAck
 import org.sandbox.chat.ChatServer.Leave
-import HttpChatClient.{GetBroadcasts, Broadcasts}
+import org.sandbox.chat.ChatServer.LeaveAck
+
+import HttpChatClient.Broadcasts
+import HttpChatClient.GetBroadcasts
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.actor.actorRef2Scala
@@ -14,7 +22,6 @@ import akka.http.model.StatusCodes.NotFound
 import akka.http.model.StatusCodes.OK
 import akka.pattern.ask
 import akka.util.Timeout
-import scala.concurrent.Await
 
 class HttpChatServerActions(chatServer: ActorRef, system: ActorSystem) {
 
@@ -30,30 +37,36 @@ class HttpChatServerActions(chatServer: ActorRef, system: ActorSystem) {
   private def forChatClient(name: String)(f: ActorRef => HttpResponse) =
     chatClients.get(name) map f getOrElse notFound(name)
 
+  private def askAndWait[T: ClassTag](who: ActorRef, msg: AnyRef): T ={
+    val futureT = ask(who, msg).mapTo[T]
+    Await.result(futureT, timeout.duration)
+  }
+
   def onJoin(name: String) = {
     val chatClient =
       system.actorOf(HttpChatClient.props(chatServer), s"httpClient-$name")
+    askAndWait[JoinAck.type](chatClient, Join(name))
+//    chatClient ! Join(name)
     chatClients += name -> chatClient
-    chatClient ! Join(name)
     ok(s"joined: $name")
   }
   def onLeave(name: String) = {
     forChatClient(name) { chatClient =>
-      chatClient ! Leave
+//      chatClient ! Leave
+      askAndWait[LeaveAck.type](chatClient, Leave)
       chatClients -= name
       ok(s"left: $name")
     }
   }
   def onBroadcast(name: String, msg: String) = {
     forChatClient(name) { chatClient =>
-      chatClient ! Broadcast(msg)
+      askAndWait[BroadcastAck.type](chatClient, Broadcast(msg))
       ok(s"broadcasted: $msg")
     }
   }
   def onPoll(name: String) = {
     forChatClient(name) { chatClient =>
-      val messagesF = ask(chatClient, GetBroadcasts).mapTo[Broadcasts]
-      val Broadcasts(messages) = Await.result(messagesF, timeout.duration)
+      val Broadcasts(messages) = askAndWait[Broadcasts](chatClient, GetBroadcasts)
       ok(s"${messages.mkString("\n")}")
     }
   }

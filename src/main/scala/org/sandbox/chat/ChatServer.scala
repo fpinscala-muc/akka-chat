@@ -13,10 +13,14 @@ class ChatServer extends Actor {
   var chatters: Map[ActorRef,String] = Map.empty
 
   override def receive: Actor.Receive = LoggingReceive {
-    case Join(name) => chatters += sender -> name
-    case Leave => chatters -= sender
+    case Join(name) =>
+      chatters += sender -> name
+      sender ! JoinAck
+    case Leave =>
+      chatters -= sender
+      sender ! LeaveAck
     case Broadcast(msg) =>
-//      if (msg.size < 10)
+      sender ! BroadcastAck
       chatters.get(sender) foreach(broadcast(_, msg))
   }
 
@@ -29,6 +33,9 @@ class ChatServer extends Actor {
 object ChatServer {
   sealed trait ChatServerMsg
   case class Join(name: String) extends ChatServerMsg
-  case object Leave
-  case class Broadcast(msg: String)
+  case object JoinAck extends ChatServerMsg
+  case object Leave extends ChatServerMsg
+  case object LeaveAck extends ChatServerMsg
+  case class Broadcast(msg: String) extends ChatServerMsg
+  case object BroadcastAck extends ChatServerMsg
 }
