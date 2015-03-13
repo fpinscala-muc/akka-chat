@@ -1,23 +1,24 @@
 package org.sandbox.chat.http
 
+import scala.annotation.migration
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.reflect.ClassTag
 
-import org.sandbox.chat.ChatServer.Broadcast
-import org.sandbox.chat.ChatServer.BroadcastAck
+import org.sandbox.chat.ChatServer.Ack
+import org.sandbox.chat.ChatServer.Ackable
+import org.sandbox.chat.ChatServer.Contribution
 import org.sandbox.chat.ChatServer.Join
-import org.sandbox.chat.ChatServer.JoinAck
 import org.sandbox.chat.ChatServer.Leave
-import org.sandbox.chat.ChatServer.LeaveAck
+import org.sandbox.chat.ChatServer.Participant
 
 import HttpChatClient.Broadcasts
 import HttpChatClient.GetBroadcasts
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
-import akka.actor.actorRef2Scala
 import akka.http.model.HttpEntity.apply
 import akka.http.model.HttpResponse
+import akka.http.model.StatusCodes.InternalServerError
 import akka.http.model.StatusCodes.NotFound
 import akka.http.model.StatusCodes.OK
 import akka.pattern.ask
@@ -25,48 +26,58 @@ import akka.util.Timeout
 
 class HttpChatServerActions(chatServer: ActorRef, system: ActorSystem) {
 
+  import org.sandbox.chat.ChatServer._
+
   import system.dispatcher
   implicit val timeout = Timeout(1 second)
 
-  var chatClients: Map[String,ActorRef] = Map.empty
+  var participants: Set[Participant] = Set.empty
 
-  private def chatterNames = chatClients.keySet.toSeq.sorted
+  private def chatterNames = (participants map(_.name)).toSeq.sorted
 
   private def ok(msg: String) = HttpResponse(OK, entity = s"$msg\n")
   private def notFound(name: String) = HttpResponse(NotFound, entity = s"not found: $name\n")
-  private def forChatClient(name: String)(f: ActorRef => HttpResponse) =
-    chatClients.get(name) map f getOrElse notFound(name)
+  private def forParticipant(name: String)(f: Participant => HttpResponse) =
+    participants.find(_.name == name) map f getOrElse notFound(name)
 
-  private def askAndWait[T: ClassTag](who: ActorRef, msg: AnyRef): T ={
-    val futureT = ask(who, msg).mapTo[T]
-    Await.result(futureT, timeout.duration)
+  private def askFor[T: ClassTag](who: ActorRef, msg: Any): T = {
+    val future = ask(who, msg).mapTo[T]
+    Await.result(future, timeout.duration)
+  }
+
+  private def withAck(who: ActorRef, msg: Ackable)(onAck: => HttpResponse) = {
+    val Ack(ackedMsg) = askFor[Ack](who, msg)
+    if (msg == ackedMsg) onAck
+    else HttpResponse(InternalServerError, entity = s"unexpected Ack for $msg")
   }
 
   def onJoin(name: String) = {
     val chatClient =
       system.actorOf(HttpChatClient.props(chatServer), s"httpClient-$name")
-    askAndWait[JoinAck.type](chatClient, Join(name))
-//    chatClient ! Join(name)
-    chatClients += name -> chatClient
-    ok(s"joined: $name")
+    val participant = Participant(chatClient, name)
+    withAck(chatClient, Join(participant)) {
+      participants += participant
+      ok(s"joined: $name")
+    }
   }
   def onLeave(name: String) = {
-    forChatClient(name) { chatClient =>
-//      chatClient ! Leave
-      askAndWait[LeaveAck.type](chatClient, Leave)
-      chatClients -= name
-      ok(s"left: $name")
+    forParticipant(name) { participant =>
+      withAck(participant.who, Leave(participant)) {
+        participants -= participant
+        ok(s"left: $name")
+      }
     }
   }
   def onBroadcast(name: String, msg: String) = {
-    forChatClient(name) { chatClient =>
-      askAndWait[BroadcastAck.type](chatClient, Broadcast(msg))
-      ok(s"broadcasted: $msg")
+    forParticipant(name) { participant =>
+      withAck(participant.who, Contribution(participant, msg)) {
+        ok(s"broadcasted: $msg")
+      }
     }
   }
   def onPoll(name: String) = {
-    forChatClient(name) { chatClient =>
-      val Broadcasts(messages) = askAndWait[Broadcasts](chatClient, GetBroadcasts)
+    forParticipant(name) { participant =>
+      val Broadcasts(messages) = askFor[Broadcasts](participant.who, GetBroadcasts)
       ok(s"${messages.mkString("\n")}")
     }
   }
