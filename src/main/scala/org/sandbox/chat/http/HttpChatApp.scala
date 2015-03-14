@@ -19,7 +19,7 @@ object HttpChatApp extends App {
 
   val chatServerActions = new HttpChatServerActions(chatServer, system)
   import chatServerActions._
-  val chatRoutes = ChatRoutes(onJoin, onLeave, onBroadcast, onPoll, onShutdown)
+  val chatRoutes = ChatRoutes(onJoin, onLeave, onContribution, onPoll, onShutdown)
 
   implicit val materializer = ActorFlowMaterializer()
 

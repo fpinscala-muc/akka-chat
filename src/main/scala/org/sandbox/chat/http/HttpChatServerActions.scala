@@ -68,7 +68,7 @@ class HttpChatServerActions(chatServer: ActorRef, system: ActorSystem) {
       }
     }
   }
-  def onBroadcast(name: String, msg: String) = {
+  def onContribution(name: String, msg: String) = {
     forParticipant(name) { participant =>
       withAck(participant.who, Contribution(participant, msg)) {
         ok(s"broadcasted: $msg")
