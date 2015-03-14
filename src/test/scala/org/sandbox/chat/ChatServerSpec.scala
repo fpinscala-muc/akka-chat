@@ -1,25 +1,29 @@
 package org.sandbox.chat
 
+import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 
 import org.junit.runner.RunWith
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.BeforeAndAfterEach
-import org.scalatest.Finders
 import org.scalatest.FlatSpecLike
 import org.scalatest.concurrent.Eventually
 import org.scalatest.prop.PropertyChecks
 
 import com.typesafe.config.ConfigFactory
 
+import ChatServer.Ack
 import ChatServer.Broadcast
+import ChatServer.Contribution
 import ChatServer.Join
 import ChatServer.Leave
+import ChatServer.Participant
 import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.actor.Props
 import akka.actor.actorRef2Scala
+import akka.pattern.ask
 import akka.testkit.DefaultTimeout
 import akka.testkit.ImplicitSender
 import akka.testkit.TestActorRef
@@ -59,9 +63,13 @@ class ChatServerSpec extends TestKit(ActorSystem("ChatServerSpec", ChatServerSpe
 
   private def contribution(name: String, msg: String, who: ActorRef = testActor, withAck: Boolean = true) = {
     val contrib = Contribution(Participant(who, name), msg)
-    server ! contrib
-    // TODO use ask pattern for withAck
-    if (withAck) expectMsg(Ack(contrib))
+    if (withAck) {
+      // ask instead of expectMsg to not interfere w/ Broadcast messages
+      val future = ask(server, contrib).mapTo[Ack]
+      val ack = Await.result(future, 500 millis)
+      assert(ack == Ack(contrib))
+    }
+    else server ! contrib
   }
 
   behavior of "ChatServer"
@@ -117,7 +125,7 @@ class ChatServerSpec extends TestKit(ActorSystem("ChatServerSpec", ChatServerSpe
         assert(client.underlyingActor.messageToPair == messageToPair)
       }
     }
-    assert(client.underlyingActor.messages == messages)
+    assert(client.underlyingActor.messagesToPairs == messagesToPairs)
 //    println(messages.mkString("\n"))
   }
 }
