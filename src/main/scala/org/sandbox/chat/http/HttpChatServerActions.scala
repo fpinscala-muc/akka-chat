@@ -24,7 +24,7 @@ import akka.http.model.StatusCodes.OK
 import akka.pattern.ask
 import akka.util.Timeout
 
-class HttpChatServerActions(chatServer: ActorRef, system: ActorSystem) {
+class HttpChatServerActions(chatServer: ActorRef, system: ActorSystem) extends ChatServerActions {
 
   import org.sandbox.chat.ChatServer._
 
@@ -33,7 +33,7 @@ class HttpChatServerActions(chatServer: ActorRef, system: ActorSystem) {
 
   var participants: Set[Participant] = Set.empty
 
-  private def chatterNames = (participants map(_.name)).toSeq.sorted
+  private def participantNames = (participants map(_.name)).toSeq.sorted
 
   private def ok(msg: String) = HttpResponse(OK, entity = s"$msg\n")
   private def notFound(name: String) = HttpResponse(NotFound, entity = s"not found: $name\n")
@@ -51,7 +51,7 @@ class HttpChatServerActions(chatServer: ActorRef, system: ActorSystem) {
     else HttpResponse(InternalServerError, entity = s"unexpected Ack for $msg")
   }
 
-  def onJoin(name: String) = {
+  override def onJoin(name: String) = {
     val chatClient =
       system.actorOf(HttpChatClient.props(chatServer), s"httpClient-$name")
     val participant = Participant(chatClient, name)
@@ -60,7 +60,7 @@ class HttpChatServerActions(chatServer: ActorRef, system: ActorSystem) {
       ok(s"joined: $name")
     }
   }
-  def onLeave(name: String) = {
+  override def onLeave(name: String) = {
     forParticipant(name) { participant =>
       withAck(participant.who, Leave(participant)) {
         participants -= participant
@@ -68,22 +68,21 @@ class HttpChatServerActions(chatServer: ActorRef, system: ActorSystem) {
       }
     }
   }
-  def onContribution(name: String, msg: String) = {
+  override def onContribution(name: String, msg: String) = {
     forParticipant(name) { participant =>
       withAck(participant.who, Contribution(participant, msg)) {
         ok(s"broadcasted: $msg")
       }
     }
   }
-  def onPoll(name: String) = {
+  override def onPoll(name: String) = {
     forParticipant(name) { participant =>
       val Broadcasts(messages) = askFor[Broadcasts](participant.who, GetBroadcasts)
       ok(s"${messages.mkString("\n")}")
     }
   }
-  def onShutdown = {
+  override def onShutdown = {
     system.scheduler.scheduleOnce(500 millis)(system.shutdown)
-    ok(s"shutdown: ${system.name} (chatters: ${chatterNames.mkString(",")})")
+    ok(s"shutdown: ${system.name} (participants: ${participantNames.mkString(",")})")
   }
-
 }

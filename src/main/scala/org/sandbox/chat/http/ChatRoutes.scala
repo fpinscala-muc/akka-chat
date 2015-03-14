@@ -11,10 +11,9 @@ import akka.http.server.Directives.segmentStringToPathMatcher
 import akka.http.server.PathMatcher.regex2PathMatcher
 import akka.http.server.Route
 
-class ChatRoutes private(onJoin: String => HttpResponse, onLeave: String => HttpResponse,
-    onContribution: (String,String) => HttpResponse, onPoll: String => HttpResponse,
-    onShutdown: => HttpResponse)
+class ChatRoutes private(chatServerActions: ChatServerActions)
 {
+  import chatServerActions._
   import ChatRoutes.StringMatcher
 
   private def forName(f: String => HttpResponse)(name: String) = complete(f(name))
@@ -34,8 +33,6 @@ class ChatRoutes private(onJoin: String => HttpResponse, onLeave: String => Http
 object ChatRoutes {
   private val StringMatcher = "(.+)".r
 
-  def apply(onJoin: String => HttpResponse, onLeave: String => HttpResponse,
-        onContribution: (String,String) => HttpResponse,
-        onPoll: String => HttpResponse, onShutdown: => HttpResponse): Route =
-    new ChatRoutes(onJoin, onLeave, onContribution, onPoll, onShutdown).routes
+  def apply(chatServerActions: ChatServerActions): Route =
+    new ChatRoutes(chatServerActions).routes
 }

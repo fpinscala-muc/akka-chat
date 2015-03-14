@@ -11,6 +11,7 @@ libraryDependencies ++= Seq(
   Library.akkaActor,
   Library.akkaRemote,
   Library.akkaPersistence,
+  Library.akkaSse,
   Library.akkaTestkit     % "test",
   Library.scalaTest       % "test",
   Library.scalaCheck      % "test",
