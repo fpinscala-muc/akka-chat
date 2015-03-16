@@ -1,7 +1,6 @@
 package org.sandbox.chat.http
 
-import akka.http.marshalling.ToResponseMarshallable.apply
-import akka.http.model.HttpResponse
+import akka.http.marshalling.ToResponseMarshallable
 import akka.http.server.Directive.addByNameNullaryApply
 import akka.http.server.Directive.addDirectiveApply
 import akka.http.server.Directives.complete
@@ -11,12 +10,12 @@ import akka.http.server.Directives.segmentStringToPathMatcher
 import akka.http.server.PathMatcher.regex2PathMatcher
 import akka.http.server.Route
 
-class ChatRoutes private(chatServerActions: ChatServerActions)
+class ChatRoutes[T <% ToResponseMarshallable] private(chatServerActions: ChatServerActions[T])
 {
   import chatServerActions._
   import ChatRoutes.StringMatcher
 
-  private def forName(f: String => HttpResponse)(name: String) = complete(f(name))
+  private def forName(f: String => T)(name: String) = complete(f(name))
 
   private val join = path("join" / StringMatcher)(forName(onJoin))
   private val leave = path("leave" / StringMatcher)(forName(onLeave))
@@ -33,6 +32,6 @@ class ChatRoutes private(chatServerActions: ChatServerActions)
 object ChatRoutes {
   private val StringMatcher = "(.+)".r
 
-  def apply(chatServerActions: ChatServerActions): Route =
+  def apply[T <% ToResponseMarshallable](chatServerActions: ChatServerActions[T]): Route =
     new ChatRoutes(chatServerActions).routes
 }

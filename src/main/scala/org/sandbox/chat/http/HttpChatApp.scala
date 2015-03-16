@@ -17,7 +17,8 @@ object HttpChatApp extends App {
 
   val chatServer = system.actorOf(Props[ChatServer], "ChuckNorris")
 
-  val chatServerActions = new HttpChatServerActions(chatServer, system)
+  val chatServerActions = //new HttpChatServerActions(chatServer, system)
+    new SseChatServerActions(chatServer, system)
   val chatRoutes = ChatRoutes(chatServerActions)
 
   implicit val materializer = ActorFlowMaterializer()

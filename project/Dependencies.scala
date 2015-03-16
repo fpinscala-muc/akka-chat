@@ -5,7 +5,7 @@ object Version {
   val akkaDataReplication  = "0.10"
   val akkaHttp             = "1.0-M4"
   val akkaPersistenceMongo = "0.7.5"
-  val akkaSse              = "0.5.0"
+  val akkaSse              = "0.7.0"
   val logback              = "1.1.2"
   val scala                = "2.11.5"
   val scalaMock            = "3.2.1"

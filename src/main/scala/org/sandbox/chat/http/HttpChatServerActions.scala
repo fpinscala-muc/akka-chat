@@ -1,6 +1,5 @@
 package org.sandbox.chat.http
 
-import scala.annotation.migration
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.reflect.ClassTag
@@ -24,8 +23,9 @@ import akka.http.model.StatusCodes.OK
 import akka.pattern.ask
 import akka.util.Timeout
 
-class HttpChatServerActions(chatServer: ActorRef, system: ActorSystem) extends ChatServerActions {
-
+class HttpChatServerActions(chatServer: ActorRef, system: ActorSystem)
+  extends ChatServerActions[HttpResponse]
+{
   import org.sandbox.chat.ChatServer._
 
   import system.dispatcher

@@ -1,11 +1,11 @@
 package org.sandbox.chat.http
 
-import akka.http.model.HttpResponse
+import akka.http.marshalling.ToResponseMarshallable
 
-trait ChatServerActions {
-  def onJoin(name: String): HttpResponse
-  def onLeave(name: String): HttpResponse
-  def onContribution(name: String, msg: String): HttpResponse
-  def onPoll(name: String): HttpResponse
-  def onShutdown: HttpResponse
+abstract class ChatServerActions[T <% ToResponseMarshallable] {
+  def onJoin(name: String): T
+  def onLeave(name: String): T
+  def onContribution(name: String, msg: String): T
+  def onPoll(name: String): T
+  def onShutdown: T
 }
