@@ -1,25 +1,29 @@
 package org.sandbox.chat
 
+import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 
 import org.junit.runner.RunWith
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.BeforeAndAfterEach
-import org.scalatest.Finders
 import org.scalatest.FlatSpecLike
 import org.scalatest.concurrent.Eventually
 import org.scalatest.prop.PropertyChecks
 
 import com.typesafe.config.ConfigFactory
 
+import ChatServer.Ack
 import ChatServer.Broadcast
+import ChatServer.Contribution
 import ChatServer.Join
 import ChatServer.Leave
+import ChatServer.Participant
 import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.actor.Props
 import akka.actor.actorRef2Scala
+import akka.pattern.ask
 import akka.testkit.DefaultTimeout
 import akka.testkit.ImplicitSender
 import akka.testkit.TestActorRef
@@ -45,60 +49,83 @@ class ChatServerSpec extends TestKit(ActorSystem("ChatServerSpec", ChatServerSpe
   override def afterEach =
     system.stop(server)
 
+  private def join(name: String, who: ActorRef = testActor) = {
+    val join = Join(Participant(who, name))
+    server ! join
+    expectMsg(Ack(join))
+  }
+
+  private def leave(name: String) = {
+    val leave = Leave(Participant(testActor, name))
+    server ! leave
+    expectMsg(Ack(leave))
+  }
+
+  private def contribution(name: String, msg: String, who: ActorRef = testActor, withAck: Boolean = true) = {
+    val contrib = Contribution(Participant(who, name), msg)
+    if (withAck) {
+      // ask instead of expectMsg to not interfere w/ Broadcast messages
+      val future = ask(server, contrib).mapTo[Ack]
+      val ack = Await.result(future, 500 millis)
+      assert(ack == Ack(contrib))
+    }
+    else server ! contrib
+  }
+
   behavior of "ChatServer"
 
   it should "broadcast an incoming single Broadcast message to a joined actor" in {
-    server ! Join("testClient")
-    server ! Broadcast("bollocks")
-    expectMsg(Broadcast("testClient: bollocks"))
+    join("testClient")
+    contribution("testClient", "bollocks")
+    val Broadcast("testClient", "bollocks", _) = expectMsgType[Broadcast]
   }
 
   it should "not broadcast incoming Broadcast messages to a left actor" in {
-    server ! Join("testClient")
-    server ! Leave
-    server ! Broadcast("bollocks")
+    join("testClient")
+    leave("testClient")
+    contribution("testClient", "bollocks", testActor, false)
     expectNoMsg
   }
 
   it should "broadcast incoming Broadcast messages to a joined actor" in new MessageCollecting {
-    server ! Join("testClient")
-    server ! Broadcast("bollocks1")
-    server ! Broadcast("bollocks2")
+    join("testClient")
+    contribution("testClient", "bollocks1")
+    contribution("testClient", "bollocks2")
     receiveWhile(1 second) {
       case msg: Broadcast => collect(msg)
     }
-    assert(messages ==
-      Seq(Broadcast("testClient: bollocks1"), Broadcast("testClient: bollocks2")))
+    assert(messagesToPairs ==
+      Seq(("testClient", "bollocks1"), ("testClient", "bollocks2")))
   }
 
   it should "broadcast incoming Broadcast messages to multiple joined members" in {
-    val client1 = messageCollector("client1")
-    server.tell(Join("client1"), client1)
-    val client2 = messageCollector("client2")
-    server.tell(Join("client2"), client2)
+    val client1 = messageCollector
+    join("client1", client1)
+    val client2 = messageCollector
+    join("client2", client2)
 
-    server.tell(Broadcast("bollocks1"), client1)
-    server.tell(Broadcast("bollocks2"), client2)
+    contribution("client1", "bollocks1", client1)
+    contribution("client2", "bollocks2", client2)
     val expectedMessages =
-      Seq(Broadcast("client1: bollocks1"), Broadcast("client2: bollocks2"))
+      Seq(("client1", "bollocks1"), ("client2", "bollocks2"))
     eventually {
-      assert(client1.underlyingActor.messages == expectedMessages)
-      assert(client2.underlyingActor.messages == expectedMessages)
+      assert(client1.underlyingActor.messagesToPairs == expectedMessages)
+      assert(client2.underlyingActor.messagesToPairs == expectedMessages)
     }
   }
 
   it should "broadcast random incoming Broadcast messages" in new MessageCollecting {
-    val client = messageCollector("client")
-    server.tell(Join("client"), client)
+    val client = messageCollector
+    join("client", client)
     forAll("msg") { msg: String =>
-      server.tell(Broadcast(msg), client)
-      val broadcastMsg = Broadcast(s"client: $msg")
+      contribution("client", msg, client)
+      val broadcastMsg = Broadcast("client", msg)
       collect(broadcastMsg)
       eventually {
-        assert(client.underlyingActor.message == broadcastMsg)
+        assert(client.underlyingActor.messageToPair == messageToPair)
       }
     }
-    assert(client.underlyingActor.messages == messages)
+    assert(client.underlyingActor.messagesToPairs == messagesToPairs)
 //    println(messages.mkString("\n"))
   }
 }
@@ -128,14 +155,16 @@ akka {
       message = broadcastMsg
       messages = messages :+ broadcastMsg
     }
+    private def broadcastToPair(b: Broadcast) = (b.authorName, b.msg)
+    def messagesToPairs = messages map broadcastToPair
+    def messageToPair = broadcastToPair(message)
   }
 
-  class MessageCollector(name: String) extends Actor with MessageCollecting {
+  class MessageCollector extends Actor with MessageCollecting {
     def receive: Actor.Receive = {
       case msg: Broadcast => collect(msg)
     }
   }
-  def messageCollector(name: String)(implicit system: ActorSystem) =
-    TestActorRef[MessageCollector](Props(new MessageCollector(name)))
-
+  def messageCollector(implicit system: ActorSystem) =
+    TestActorRef[MessageCollector](Props[MessageCollector])
 }

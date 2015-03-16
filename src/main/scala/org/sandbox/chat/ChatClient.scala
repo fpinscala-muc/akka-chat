@@ -1,6 +1,9 @@
 package org.sandbox.chat
 
-import ChatServer.{Broadcast,Join}
+import ChatServer.Broadcast
+import ChatServer.Contribution
+import ChatServer.Join
+import ChatServer.Participant
 import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.Props
@@ -10,12 +13,12 @@ class ChatClient private(name: String, chatServer: ActorRef) extends Actor {
   import ChatServer._
 
   def receive: Actor.Receive = {
-    case Broadcast(msg) =>
-      println(s"$name: received $msg")
+    case Broadcast(author, msg, when) =>
+      println(s"$author: received $msg")
   }
 
-  chatServer ! Join(name)
-  chatServer ! Broadcast(s"Hi! I'm $name")
+  chatServer ! Join(Participant(self, name))
+  chatServer ! Contribution(Participant(self, name), s"Hi! I'm $name")
 }
 
 object ChatClient {

@@ -1,65 +1,88 @@
 package org.sandbox.chat.http
 
+import scala.annotation.migration
+import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
-import org.sandbox.chat.ChatServer.Broadcast
+import scala.reflect.ClassTag
+
+import org.sandbox.chat.ChatServer.Ack
+import org.sandbox.chat.ChatServer.Ackable
+import org.sandbox.chat.ChatServer.Contribution
 import org.sandbox.chat.ChatServer.Join
 import org.sandbox.chat.ChatServer.Leave
-import HttpChatClient.{GetBroadcasts, Broadcasts}
+import org.sandbox.chat.ChatServer.Participant
+
+import HttpChatClient.Broadcasts
+import HttpChatClient.GetBroadcasts
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
-import akka.actor.actorRef2Scala
 import akka.http.model.HttpEntity.apply
 import akka.http.model.HttpResponse
+import akka.http.model.StatusCodes.InternalServerError
 import akka.http.model.StatusCodes.NotFound
 import akka.http.model.StatusCodes.OK
 import akka.pattern.ask
 import akka.util.Timeout
-import scala.concurrent.Await
 
-class HttpChatServerActions(chatServer: ActorRef, system: ActorSystem) {
+class HttpChatServerActions(chatServer: ActorRef, system: ActorSystem) extends ChatServerActions {
+
+  import org.sandbox.chat.ChatServer._
 
   import system.dispatcher
   implicit val timeout = Timeout(1 second)
 
-  var chatClients: Map[String,ActorRef] = Map.empty
+  var participants: Set[Participant] = Set.empty
 
-  private def chatterNames = chatClients.keySet.toSeq.sorted
+  private def participantNames = (participants map(_.name)).toSeq.sorted
 
   private def ok(msg: String) = HttpResponse(OK, entity = s"$msg\n")
   private def notFound(name: String) = HttpResponse(NotFound, entity = s"not found: $name\n")
-  private def forChatClient(name: String)(f: ActorRef => HttpResponse) =
-    chatClients.get(name) map f getOrElse notFound(name)
+  private def forParticipant(name: String)(f: Participant => HttpResponse) =
+    participants.find(_.name == name) map f getOrElse notFound(name)
 
-  def onJoin(name: String) = {
+  private def askFor[T: ClassTag](who: ActorRef, msg: Any): T = {
+    val future = ask(who, msg).mapTo[T]
+    Await.result(future, timeout.duration)
+  }
+
+  private def withAck(who: ActorRef, msg: Ackable)(onAck: => HttpResponse) = {
+    val Ack(ackedMsg) = askFor[Ack](who, msg)
+    if (msg == ackedMsg) onAck
+    else HttpResponse(InternalServerError, entity = s"unexpected Ack for $msg")
+  }
+
+  override def onJoin(name: String) = {
     val chatClient =
       system.actorOf(HttpChatClient.props(chatServer), s"httpClient-$name")
-    chatClients += name -> chatClient
-    chatClient ! Join(name)
-    ok(s"joined: $name")
-  }
-  def onLeave(name: String) = {
-    forChatClient(name) { chatClient =>
-      chatClient ! Leave
-      chatClients -= name
-      ok(s"left: $name")
+    val participant = Participant(chatClient, name)
+    withAck(chatClient, Join(participant)) {
+      participants += participant
+      ok(s"joined: $name")
     }
   }
-  def onBroadcast(name: String, msg: String) = {
-    forChatClient(name) { chatClient =>
-      chatClient ! Broadcast(msg)
-      ok(s"broadcasted: $msg")
+  override def onLeave(name: String) = {
+    forParticipant(name) { participant =>
+      withAck(participant.who, Leave(participant)) {
+        participants -= participant
+        ok(s"left: $name")
+      }
     }
   }
-  def onPoll(name: String) = {
-    forChatClient(name) { chatClient =>
-      val messagesF = ask(chatClient, GetBroadcasts).mapTo[Broadcasts]
-      val Broadcasts(messages) = Await.result(messagesF, timeout.duration)
+  override def onContribution(name: String, msg: String) = {
+    forParticipant(name) { participant =>
+      withAck(participant.who, Contribution(participant, msg)) {
+        ok(s"broadcasted: $msg")
+      }
+    }
+  }
+  override def onPoll(name: String) = {
+    forParticipant(name) { participant =>
+      val Broadcasts(messages) = askFor[Broadcasts](participant.who, GetBroadcasts)
       ok(s"${messages.mkString("\n")}")
     }
   }
-  def onShutdown = {
+  override def onShutdown = {
     system.scheduler.scheduleOnce(500 millis)(system.shutdown)
-    ok(s"shutdown: ${system.name} (chatters: ${chatterNames.mkString(",")})")
+    ok(s"shutdown: ${system.name} (participants: ${participantNames.mkString(",")})")
   }
-
 }

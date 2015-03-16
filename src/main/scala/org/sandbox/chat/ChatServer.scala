@@ -1,6 +1,6 @@
 package org.sandbox.chat
 
-import scala.annotation.migration
+import java.util.Date
 
 import akka.actor.Actor
 import akka.actor.ActorRef
@@ -10,25 +10,32 @@ import akka.event.LoggingReceive
 class ChatServer extends Actor {
   import ChatServer._
 
-  var chatters: Map[ActorRef,String] = Map.empty
+  var participants: Set[Participant] = Set.empty
 
   override def receive: Actor.Receive = LoggingReceive {
-    case Join(name) => chatters += sender -> name
-    case Leave => chatters -= sender
-    case Broadcast(msg) =>
-//      if (msg.size < 10)
-      chatters.get(sender) foreach(broadcast(_, msg))
-  }
-
-  private def broadcast(senderName: String, msg: String) = {
-    val broadcastMsg = Broadcast(s"$senderName: $msg")
-    chatters.keys foreach (_ ! broadcastMsg)
+    case join@Join(who) =>
+      participants += who
+      sender ! Ack(join)
+    case leave@Leave(who) =>
+      participants -= who
+      sender ! Ack(leave)
+    case contribution@Contribution(author@Participant(_,name), msg) if participants contains author =>
+      self ! Broadcast(name, msg)
+      sender ! Ack(contribution)
+    case broadcast: Broadcast =>
+      participants foreach(_.who ! broadcast)
   }
 }
 
 object ChatServer {
+  case class Participant(who: ActorRef, name: String)
+
+  trait Ackable
+
   sealed trait ChatServerMsg
-  case class Join(name: String) extends ChatServerMsg
-  case object Leave
-  case class Broadcast(msg: String)
+  case class Join(who: Participant) extends ChatServerMsg with Ackable
+  case class Leave(who: Participant) extends ChatServerMsg with Ackable
+  case class Contribution(author: Participant, msg: String) extends ChatServerMsg with Ackable
+  case class Broadcast(authorName: String, msg: String, when: Date  = new Date) extends ChatServerMsg
+  case class Ack(what: Ackable) extends ChatServerMsg
 }
