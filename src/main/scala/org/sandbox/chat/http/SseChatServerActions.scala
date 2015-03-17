@@ -1,12 +1,21 @@
 package org.sandbox.chat.http
 
-import akka.stream.scaladsl.Source
-import de.heikoseeberger.akkasse.EventStreamMarshalling
-import de.heikoseeberger.akkasse.ServerSentEvent
-import akka.http.server.Route
+import scala.concurrent.duration.DurationInt
+
+import org.sandbox.chat.ChatServer.Ack
+import org.sandbox.chat.ChatServer.Ackable
+import org.sandbox.chat.ChatServer.ChatServerMsg
+import org.sandbox.chat.ChatServer.Contribution
+import org.sandbox.chat.ChatServer.Join
+
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.http.marshalling.ToResponseMarshallable
+import akka.http.marshalling.ToResponseMarshallable.apply
+import akka.stream.scaladsl.Source
+import de.heikoseeberger.akkasse.EventStreamMarshalling
+import de.heikoseeberger.akkasse.ServerSentEvent
+
 import SseChatServerActions._
 
 class SseChatServerActions(val chatServer: ActorRef, val system: ActorSystem)
@@ -22,13 +31,15 @@ class SseChatServerActions(val chatServer: ActorRef, val system: ActorSystem)
   private def singleSource[T](element: T) = Source.single(element)
 
   private def tellWithAckReceiver(who: ActorRef, msg: Ackable, onAckReceived: => Unit = ()) = {
+    val ack = Ack(msg)
+    def onTimeout = system.log.error(s"timeout for $ack")
     def createAckReceiver: ActorRef = {
-      def onAck(ack: Ack) = ack match {
-        case Ack(ackedMsg) if ackedMsg == msg =>
-          onAckReceived
-          singleSource(chatServerMsgToServerSentEvent(ack))
+      def onAck = {
+        onAckReceived
+        system.log.debug(s"received $ack")
+        singleSource(chatServerMsgToServerSentEvent(ack))
       }
-      system.actorOf(AckReceiver.props(onAck))
+      system.actorOf(AckReceiver.props(ack, onAck, 1 second, onTimeout))
     }
 
     val ackReceiver = createAckReceiver
