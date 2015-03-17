@@ -18,7 +18,8 @@ import de.heikoseeberger.akkasse.ServerSentEvent
 
 import SseChatServerActions._
 
-class SseChatServerActions(val chatServer: ActorRef, val system: ActorSystem)
+class SseChatServerActions(val chatServer: ActorRef, ssePublisher: ActorRef,
+    val system: ActorSystem)
   extends ChatServerActions[ToResponseMarshallable] with Participants[ToResponseMarshallable]
   with EventStreamMarshalling
 {
@@ -26,9 +27,15 @@ class SseChatServerActions(val chatServer: ActorRef, val system: ActorSystem)
   import system.dispatcher
 
   override def notFound(name: String): ToResponseMarshallable =
-    singleSource(ServerSentEvent(name, "notfound"))
+    singleSseSource(ServerSentEvent(name, "notfound"))
 
-  private def singleSource[T](element: T) = Source.single(element)
+  private def publish(sse: ServerSentEvent) = {
+    ssePublisher ! sse
+    sse
+  }
+
+  private def singleSseSource(sse: ServerSentEvent): Source[ServerSentEvent, Unit] =
+    Source.single(sse) map publish
 
   private def tellWithAckReceiver(who: ActorRef, msg: Ackable, onAckReceived: => Unit = ()) = {
     val ack = Ack(msg)
@@ -37,7 +44,7 @@ class SseChatServerActions(val chatServer: ActorRef, val system: ActorSystem)
       def onAck = {
         onAckReceived
         system.log.debug(s"received $ack")
-        singleSource(chatServerMsgToServerSentEvent(ack))
+        singleSseSource(ack)
       }
       system.actorOf(AckReceiver.props(ack, onAck, 1 second, onTimeout))
     }
@@ -50,7 +57,7 @@ class SseChatServerActions(val chatServer: ActorRef, val system: ActorSystem)
     forParticipant(name) { participant =>
       val contribution = Contribution(participant, msg)
       tellWithAckReceiver(participant.who, contribution)
-      singleSource(chatServerMsgToServerSentEvent(contribution))
+      singleSseSource(contribution)
     }
   }
 
@@ -58,7 +65,7 @@ class SseChatServerActions(val chatServer: ActorRef, val system: ActorSystem)
     val participant = createParticipant(name)
     val msg = Join(participant)
     tellWithAckReceiver(participant.who, msg, addParticipant(participant))
-    singleSource(chatServerMsgToServerSentEvent(msg))
+    singleSseSource(msg)
   }
 
   def onLeave(name: String): ToResponseMarshallable = {
@@ -70,7 +77,11 @@ class SseChatServerActions(val chatServer: ActorRef, val system: ActorSystem)
   }
 
   def onShutdown: ToResponseMarshallable = {
-    ???
+    system.scheduler.scheduleOnce(500 millis)(system.shutdown)
+    val sse =
+      ServerSentEvent(s"shutdown: ${system.name} (participants: ${participantNames.mkString(",")})",
+          Some("shutdown"))
+    singleSseSource(sse)
   }
 }
 
