@@ -1,4 +1,4 @@
-package org.sandbox.chat.http
+package org.sandbox.chat.sse
 
 import scala.concurrent.duration.DurationInt
 
@@ -7,22 +7,27 @@ import org.sandbox.chat.ChatServer.Ackable
 import org.sandbox.chat.ChatServer.ChatServerMsg
 import org.sandbox.chat.ChatServer.Contribution
 import org.sandbox.chat.ChatServer.Join
+import org.sandbox.chat.ChatServer.Leave
+import org.sandbox.chat.http.AckReceiver
+import org.sandbox.chat.http.ChatServerActions
+import org.sandbox.chat.http.HttpChatClient.Broadcasts
+import org.sandbox.chat.http.Participants
 
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
+import akka.actor.actorRef2Scala
 import akka.http.marshalling.ToResponseMarshallable
 import akka.http.marshalling.ToResponseMarshallable.apply
 import akka.stream.scaladsl.Source
 import de.heikoseeberger.akkasse.EventStreamMarshalling
 import de.heikoseeberger.akkasse.ServerSentEvent
 
-import SseChatServerActions._
-
 class SseChatServerActions(val chatServer: ActorRef, ssePublisher: ActorRef,
     val system: ActorSystem)
   extends ChatServerActions[ToResponseMarshallable] with Participants[ToResponseMarshallable]
   with EventStreamMarshalling
 {
+  import SseChatServerActions._
   import org.sandbox.chat.ChatServer._
   import system.dispatcher
 
@@ -69,18 +74,27 @@ class SseChatServerActions(val chatServer: ActorRef, ssePublisher: ActorRef,
   }
 
   def onLeave(name: String): ToResponseMarshallable = {
-    ???
+    forParticipant(name) { participant =>
+      val leave = Leave(participant)
+      tellWithAckReceiver(participant.who, leave)
+      singleSseSource(leave)
+    }
   }
 
   def onPoll(name: String): ToResponseMarshallable = {
-    ???
+    forParticipant(name) { participant =>
+      val Broadcasts(messages) = askForBroadcasts(participant)
+      val sse = ServerSentEvent(s"${messages.mkString("\n")}", "broadcasts")
+      singleSseSource(sse)
+    }
   }
 
   def onShutdown: ToResponseMarshallable = {
     system.scheduler.scheduleOnce(500 millis)(system.shutdown)
     val sse =
-      ServerSentEvent(s"shutdown: ${system.name} (participants: ${participantNames.mkString(",")})",
-          Some("shutdown"))
+      ServerSentEvent(
+          s"shutdown: ${system.name} (participants: ${participantNames.mkString(", ")})",
+          "shutdown")
     singleSseSource(sse)
   }
 }

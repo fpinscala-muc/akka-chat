@@ -11,6 +11,7 @@ import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
 import org.sandbox.chat.sse.SseChatPublisher
 import de.heikoseeberger.akkasse.ServerSentEvent
+import org.sandbox.chat.sse.SseChatServerActions
 import org.sandbox.chat.sse.SseChatService
 import akka.stream.ActorFlowMaterializerSettings
 import akka.stream.actor.ActorPublisher

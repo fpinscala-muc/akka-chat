@@ -2,7 +2,9 @@ package org.sandbox.chat.sse
 
 import scala.annotation.tailrec
 
+import akka.actor.actorRef2Scala
 import akka.stream.actor.ActorPublisher
+import akka.stream.actor.ActorPublisherMessage.Cancel
 import akka.stream.actor.ActorPublisherMessage.Request
 import de.heikoseeberger.akkasse.ServerSentEvent
 

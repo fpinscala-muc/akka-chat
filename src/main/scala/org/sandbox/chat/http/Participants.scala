@@ -1,13 +1,24 @@
 package org.sandbox.chat.http
 
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
+import scala.reflect.ClassTag
+
 import org.sandbox.chat.ChatServer.Participant
-import akka.actor.ActorSystem
+import org.sandbox.chat.http.HttpChatClient.Broadcasts
+import org.sandbox.chat.http.HttpChatClient.GetBroadcasts
+
 import akka.actor.ActorRef
+import akka.actor.ActorSystem
+import akka.pattern.ask
+import akka.util.Timeout
 
 trait Participants[T] {
 
   val system: ActorSystem
   val chatServer: ActorRef
+
+  implicit val timeout = Timeout(1 second)
 
   var participants: Set[Participant] = Set.empty
 
@@ -26,4 +37,12 @@ trait Participants[T] {
   }
 
   def participantNames = (participants map(_.name)).toSeq.sorted
+
+  def askFor[T: ClassTag](who: ActorRef, msg: Any): T = {
+    val future = ask(who, msg).mapTo[T]
+    Await.result(future, timeout.duration)
+  }
+
+  def askForBroadcasts(participant: Participant): Broadcasts =
+    askFor[Broadcasts](participant.who, GetBroadcasts)
 }
