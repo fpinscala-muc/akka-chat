@@ -22,6 +22,7 @@ class SseChatService(sseSource: Source[ServerSentEvent, _],
   val port = 9000
 
   val requestHandler = Route.handlerFlow(route)
+//    Route.asyncHandler(route)
   val serverSource =
     Http(system)
       .bind(interface = host, port = port)
@@ -30,6 +31,7 @@ class SseChatService(sseSource: Source[ServerSentEvent, _],
   val bindingFuture = serverSource.to(Sink.foreach { connection =>
     system.log.info(s"SseChatService: accepted new connection from ${connection.remoteAddress}")
     connection handleWith requestHandler
+//    connection handleWithAsyncHandler requestHandler
   }).run()
 
   println(s"SseChatService listening on $host:$port")

@@ -25,8 +25,12 @@ object HttpChatApp extends App {
 
   val chatServer = system.actorOf(ChatServer.props(sseChatPublisher), "ChuckNorris")
 
-  implicit val sseSource: Source[ServerSentEvent, _] =
+  // a normal Publisher can only accept one Subscriber, so we have to fan out
+  val sseMultiSubscriberPublisher =
     Source(ActorPublisher[ServerSentEvent](sseChatPublisher))
+      .runWith(Sink.fanoutPublisher(initialBufferSize = 8, maximumBufferSize = 16))
+  val sseSource: Source[ServerSentEvent, _] = Source(sseMultiSubscriberPublisher)
+
   val sseChatService = new SseChatService(sseSource, system, materializer)
   val chatServerActions = //new HttpChatServerActions(chatServer, system)
     new SseChatServerActions(chatServer, sseChatPublisher, system)
