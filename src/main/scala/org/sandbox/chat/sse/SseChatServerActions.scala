@@ -4,7 +4,6 @@ import scala.concurrent.duration.DurationInt
 
 import org.sandbox.chat.ChatServer.Ack
 import org.sandbox.chat.ChatServer.Ackable
-import org.sandbox.chat.ChatServer.ChatServerMsg
 import org.sandbox.chat.ChatServer.Contribution
 import org.sandbox.chat.ChatServer.Join
 import org.sandbox.chat.ChatServer.Leave
@@ -13,6 +12,7 @@ import org.sandbox.chat.http.ChatServerActions
 import org.sandbox.chat.http.HttpChatClient.Broadcasts
 import org.sandbox.chat.http.Participants
 
+import SseConversions.chatServerMsgToSse
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.actor.actorRef2Scala
@@ -27,7 +27,7 @@ class SseChatServerActions(val chatServer: ActorRef, ssePublisher: ActorRef,
   extends ChatServerActions[ToResponseMarshallable] with Participants[ToResponseMarshallable]
   with EventStreamMarshalling
 {
-  import SseChatServerActions._
+  import SseConversions._
   import org.sandbox.chat.ChatServer._
   import system.dispatcher
 
@@ -96,15 +96,5 @@ class SseChatServerActions(val chatServer: ActorRef, ssePublisher: ActorRef,
           s"shutdown: ${system.name} (participants: ${participantNames.mkString(", ")})",
           "shutdown")
     singleSseSource(sse)
-  }
-}
-
-object SseChatServerActions {
-  import org.sandbox.chat.ChatServer._
-  implicit def chatServerMsgToServerSentEvent(message: ChatServerMsg): ServerSentEvent = {
-    val event = message.getClass.getSimpleName.toLowerCase
-    message match {
-      case m => ServerSentEvent(m.toString, event)
-    }
   }
 }
