@@ -8,12 +8,12 @@ import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.actor.Props
 import akka.http.Http
+import akka.http.server.Route
 import akka.stream.ActorFlowMaterializer
 import akka.stream.actor.ActorPublisher
 import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
 import de.heikoseeberger.akkasse.ServerSentEvent
-import akka.http.server.Route
 
 object HttpChatApp extends App {
 
@@ -40,7 +40,7 @@ object HttpChatApp extends App {
 //  Http(system).bindAndstartHandlingWith(requestHandler, interface = "localhost", port = 8080)
 
   val bindingFuture = serverSource.to(Sink.foreach { connection =>
-    system.log.info(s"Accepted new connection from ${connection.remoteAddress}")
+    system.log.info(s"HttpChatApp: accepted new connection from ${connection.remoteAddress}")
     connection handleWith requestHandler
   }).run()
 
