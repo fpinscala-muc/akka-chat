@@ -68,15 +68,15 @@ class SseChatServerActions(val chatServer: ActorRef, ssePublisher: ActorRef,
 
   def onJoin(name: String): ToResponseMarshallable = {
     val participant = createParticipant(name)
-    val msg = Join(participant)
-    tellWithAckReceiver(participant.who, msg, addParticipant(participant))
-    singleSseSource(msg)
+    val join = Join(participant)
+    tellWithAckReceiver(participant.who, join, addParticipant(participant))
+    singleSseSource(join)
   }
 
   def onLeave(name: String): ToResponseMarshallable = {
     forParticipant(name) { participant =>
       val leave = Leave(participant)
-      tellWithAckReceiver(participant.who, leave)
+      tellWithAckReceiver(participant.who, leave, removeParticipant(participant))
       singleSseSource(leave)
     }
   }
