@@ -4,16 +4,14 @@ import org.sandbox.chat.ChatServer
 import org.sandbox.chat.sse.SseChatPublisher
 import org.sandbox.chat.sse.SseChatServerActions
 import org.sandbox.chat.sse.SseChatService
+
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.actor.Props
 import akka.http.Http
 import akka.http.server.Route
 import akka.stream.ActorFlowMaterializer
-import akka.stream.actor.ActorPublisher
 import akka.stream.scaladsl.Sink
-import akka.stream.scaladsl.Source
-import de.heikoseeberger.akkasse.ServerSentEvent
 
 object HttpChatApp extends App {
 
@@ -25,15 +23,10 @@ object HttpChatApp extends App {
 
   val chatServer = system.actorOf(ChatServer.props(sseChatPublisher), "ChuckNorris")
 
-  // a normal Publisher can only accept one Subscriber, so we have to fan out
-  val sseMultiSubscriberPublisher =
-    Source(ActorPublisher[ServerSentEvent](sseChatPublisher))
-      .runWith(Sink.fanoutPublisher(initialBufferSize = 8, maximumBufferSize = 16))
-  val sseSource: Source[ServerSentEvent, _] = Source(sseMultiSubscriberPublisher)
-
-  val sseChatService = new SseChatService(sseSource, system, materializer)
+  val sseChatService = new SseChatService(sseChatPublisher, system, materializer)
   val chatServerActions = //new HttpChatServerActions(chatServer, system)
     new SseChatServerActions(chatServer, sseChatPublisher, system)
+
   val chatRoutes = ChatRoutes(chatServerActions)
 
   val host = "localhost"

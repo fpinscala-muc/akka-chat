@@ -2,21 +2,27 @@ package org.sandbox.chat.sse
 
 import scala.concurrent.ExecutionContext
 
+import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.http.Http
+import akka.http.marshalling.ToResponseMarshallable.apply
+import akka.http.server.Directive.addByNameNullaryApply
 import akka.http.server.Directives
 import akka.http.server.Route
 import akka.stream.ActorFlowMaterializer
+import akka.stream.actor.ActorPublisher
 import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
 import de.heikoseeberger.akkasse.EventStreamMarshalling
 import de.heikoseeberger.akkasse.ServerSentEvent
 
-class SseChatService(sseSource: Source[ServerSentEvent, _],
+class SseChatService(sseChatPublisher: ActorRef,
     implicit val system: ActorSystem, implicit val mat: ActorFlowMaterializer)
    extends Directives with EventStreamMarshalling
 {
   import system.dispatcher
+
+  val sseSource: Source[ServerSentEvent, _] = getSseSource(16)
 
   val host = "127.0.0.1"
   val port = 9000
@@ -40,4 +46,11 @@ class SseChatService(sseSource: Source[ServerSentEvent, _],
     get {
       complete(sseSource)
     }
+
+  private def getSseSource(maxSubscribers: Int) = {
+    // a normal Publisher can only accept one Subscriber, so we have to fan out
+    val sseMultiSubscriberPublisher = Source(ActorPublisher[ServerSentEvent](sseChatPublisher))
+      .runWith(Sink.fanoutPublisher(initialBufferSize = 8, maximumBufferSize = maxSubscribers))
+    Source(sseMultiSubscriberPublisher)
+  }
 }

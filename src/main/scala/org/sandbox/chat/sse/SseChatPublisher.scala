@@ -2,6 +2,8 @@ package org.sandbox.chat.sse
 
 import scala.annotation.tailrec
 
+import org.sandbox.chat.ChatServer.ChatServerMsg
+
 import akka.actor.actorRef2Scala
 import akka.stream.actor.ActorPublisher
 import akka.stream.actor.ActorPublisherMessage.Cancel
@@ -21,7 +23,10 @@ class SseChatPublisher extends ActorPublisher[ServerSentEvent] {
   val MaxBufferSize = 100
   var buf = Vector.empty[ServerSentEvent]
 
-  def receive: Receive = {
+  def receive: Receive =
+    publishSse orElse convertChatServerMsg
+
+  private def publishSse: Receive = {
     case sse: ServerSentEvent if buf.size == MaxBufferSize =>
       sender ! SseDenied
     case sse: ServerSentEvent =>
@@ -36,6 +41,10 @@ class SseChatPublisher extends ActorPublisher[ServerSentEvent] {
       deliverBuf()
     case Cancel =>
       context.stop(self)
+  }
+
+  private def convertChatServerMsg: Receive = {
+    case msg: ChatServerMsg => self ! SseConversions.chatServerMsgToSse(msg)
   }
 
   @tailrec final def deliverBuf(): Unit =
