@@ -1,20 +1,14 @@
 package org.sandbox.chat.http
 
 import org.sandbox.chat.ChatServer
+import org.sandbox.chat.sse.SseChatService
+
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
-import akka.actor.Props
 import akka.http.Http
 import akka.http.server.Route
 import akka.stream.ActorFlowMaterializer
 import akka.stream.scaladsl.Sink
-import akka.stream.scaladsl.Source
-import org.sandbox.chat.sse.SseChatPublisher
-import de.heikoseeberger.akkasse.ServerSentEvent
-import org.sandbox.chat.sse.SseChatServerActions
-import org.sandbox.chat.sse.SseChatService
-import akka.stream.ActorFlowMaterializerSettings
-import akka.stream.actor.ActorPublisher
 
 object HttpChatApp extends App {
 
@@ -22,23 +16,28 @@ object HttpChatApp extends App {
   import system.dispatcher
   implicit val materializer = ActorFlowMaterializer()
 
-  val chatServer = system.actorOf(Props[ChatServer], "ChuckNorris")
+  val sseChatService = new SseChatService
 
-  val sseChatPublisher: ActorRef = system.actorOf(Props[SseChatPublisher])
-  implicit val sseSource: Source[ServerSentEvent, _] =
-    Source(ActorPublisher[ServerSentEvent](sseChatPublisher))
-  val sseChatService = new SseChatService(sseSource, system, materializer)
+  val chatPublisher: ActorRef = sseChatService.getPublisher
+  val chatServer = system.actorOf(ChatServer.props(chatPublisher), "ChuckNorris")
+
   val chatServerActions = //new HttpChatServerActions(chatServer, system)
-    new SseChatServerActions(chatServer, sseChatPublisher, system)
+    sseChatService.getChatServerActions(chatServer)
+
   val chatRoutes = ChatRoutes(chatServerActions)
 
+  val host = "localhost"
+  val port = 8080
 
   val requestHandler = Route.handlerFlow(chatRoutes)
-  val serverSource = Http(system).bind(interface = "localhost", port = 8080)
+  val serverSource = Http(system).bind(interface = host, port = port)
 //  Http(system).bindAndstartHandlingWith(requestHandler, interface = "localhost", port = 8080)
 
   val bindingFuture = serverSource.to(Sink.foreach { connection =>
-    println("Accepted new connection from " + connection.remoteAddress)
+    system.log.info(s"HttpChatApp: accepted new connection from ${connection.remoteAddress}")
     connection handleWith requestHandler
   }).run()
+
+  println(s"HttpChatApp listening on $host:$port")
+  system.registerOnTermination(println(s"ActorSystem ${system.name} shutting down ..."))
 }

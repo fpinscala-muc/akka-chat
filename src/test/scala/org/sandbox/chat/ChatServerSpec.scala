@@ -4,6 +4,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 
 import org.junit.runner.RunWith
+import org.sandbox.chat.sse.SseChatPublisher
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.FlatSpecLike
@@ -41,10 +42,13 @@ class ChatServerSpec extends TestKit(ActorSystem("ChatServerSpec", ChatServerSpe
   import ChatServer._
   import ChatServerSpec._
 
+  var sseChatPublisher: ActorRef = _
   var server: ActorRef = _
 
-  override def beforeEach =
-    server = system.actorOf(Props[ChatServer], uniqueName("testServer"))
+  override def beforeEach = {
+    sseChatPublisher = system.actorOf(Props[SseChatPublisher])
+    server = system.actorOf(ChatServer.props(sseChatPublisher), uniqueName("testServer"))
+  }
 
   override def afterEach =
     system.stop(server)

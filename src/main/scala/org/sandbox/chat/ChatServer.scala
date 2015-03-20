@@ -4,10 +4,11 @@ import java.util.Date
 
 import akka.actor.Actor
 import akka.actor.ActorRef
+import akka.actor.Props
 import akka.actor.actorRef2Scala
 import akka.event.LoggingReceive
 
-class ChatServer extends Actor {
+class ChatServer(publisher: ActorRef) extends Actor {
   import ChatServer._
 
   var participants: Set[Participant] = Set.empty
@@ -24,10 +25,14 @@ class ChatServer extends Actor {
       sender ! Ack(contribution)
     case broadcast: Broadcast =>
       participants foreach(_.who ! broadcast)
+      publisher ! broadcast
   }
 }
 
 object ChatServer {
+  def props(publisher: ActorRef): Props =
+    Props(new ChatServer(publisher))
+
   case class Participant(who: ActorRef, name: String)
 
   trait Ackable
