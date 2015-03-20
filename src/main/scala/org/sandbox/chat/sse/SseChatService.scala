@@ -26,7 +26,7 @@ class SseChatService(implicit val system: ActorSystem, implicit val mat: ActorFl
   def getChatServerActions(chatServer: ActorRef) =
     new SseChatServerActions(chatServer, sseChatPublisher, system)
 
-  val sseSource: Source[ServerSentEvent, _] = getSseSource(16)
+  val sseSource: Source[ServerSentEvent, _] = getSseSource
 
   val host = "127.0.0.1"
   val port = 9000
@@ -52,10 +52,10 @@ class SseChatService(implicit val system: ActorSystem, implicit val mat: ActorFl
       complete(sseSource)
     }
 
-  private def getSseSource(maxSubscribers: Int) = {
+  private def getSseSource = {
     // a normal Publisher can only accept one Subscriber, so we have to fan out
     val sseMultiSubscriberPublisher = Source(ActorPublisher[ServerSentEvent](sseChatPublisher))
-      .runWith(Sink.fanoutPublisher(initialBufferSize = 8, maximumBufferSize = maxSubscribers))
+      .runWith(Sink.fanoutPublisher(initialBufferSize = 8, maximumBufferSize = 16))
     Source(sseMultiSubscriberPublisher)
   }
 }
