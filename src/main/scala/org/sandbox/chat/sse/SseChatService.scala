@@ -4,6 +4,7 @@ import scala.concurrent.ExecutionContext
 
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
+import akka.actor.Props
 import akka.http.Http
 import akka.http.marshalling.ToResponseMarshallable.apply
 import akka.http.server.Directive.addByNameNullaryApply
@@ -16,17 +17,21 @@ import akka.stream.scaladsl.Source
 import de.heikoseeberger.akkasse.EventStreamMarshalling
 import de.heikoseeberger.akkasse.ServerSentEvent
 
-class SseChatService(sseChatPublisher: ActorRef,
-    implicit val system: ActorSystem, implicit val mat: ActorFlowMaterializer)
+class SseChatService(implicit val system: ActorSystem, implicit val mat: ActorFlowMaterializer)
    extends Directives with EventStreamMarshalling
 {
-  import system.dispatcher
+  val sseChatPublisher: ActorRef = system.actorOf(Props[SseChatPublisher])
+  def getPublisher = sseChatPublisher
+
+  def getChatServerActions(chatServer: ActorRef) =
+    new SseChatServerActions(chatServer, sseChatPublisher, system)
 
   val sseSource: Source[ServerSentEvent, _] = getSseSource(16)
 
   val host = "127.0.0.1"
   val port = 9000
 
+  import system.dispatcher
   val requestHandler = Route.handlerFlow(route)
 //    Route.asyncHandler(route)
   val serverSource =

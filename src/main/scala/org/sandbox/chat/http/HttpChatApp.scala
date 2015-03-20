@@ -1,13 +1,10 @@
 package org.sandbox.chat.http
 
 import org.sandbox.chat.ChatServer
-import org.sandbox.chat.sse.SseChatPublisher
-import org.sandbox.chat.sse.SseChatServerActions
 import org.sandbox.chat.sse.SseChatService
 
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
-import akka.actor.Props
 import akka.http.Http
 import akka.http.server.Route
 import akka.stream.ActorFlowMaterializer
@@ -19,13 +16,13 @@ object HttpChatApp extends App {
   import system.dispatcher
   implicit val materializer = ActorFlowMaterializer()
 
-  val sseChatPublisher: ActorRef = system.actorOf(Props[SseChatPublisher])
+  val sseChatService = new SseChatService
 
-  val chatServer = system.actorOf(ChatServer.props(sseChatPublisher), "ChuckNorris")
+  val chatPublisher: ActorRef = sseChatService.getPublisher
+  val chatServer = system.actorOf(ChatServer.props(chatPublisher), "ChuckNorris")
 
-  val sseChatService = new SseChatService(sseChatPublisher, system, materializer)
   val chatServerActions = //new HttpChatServerActions(chatServer, system)
-    new SseChatServerActions(chatServer, sseChatPublisher, system)
+    sseChatService.getChatServerActions(chatServer)
 
   val chatRoutes = ChatRoutes(chatServerActions)
 
