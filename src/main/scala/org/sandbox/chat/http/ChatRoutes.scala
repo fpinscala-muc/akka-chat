@@ -27,12 +27,11 @@ class ChatRoutes[T <% ToResponseMarshallable] private(chatServerActions: ChatSer
   import chatServerActions._
   import ChatRoutes.StringMatcher
 
-  private implicit val stringUnmarshaller: FromRequestUnmarshaller[String] = {
-    Unmarshaller.apply { req =>
+  implicit val stringUnmarshaller: FromRequestUnmarshaller[String] =
+    Unmarshaller { req =>
       val postDataF = req.entity.dataBytes.runFold(ByteString("")) { (z, i) => z.concat(i)}
       postDataF map(_.decodeString("UTF-8"))
     }
-  }
 
   private def forName(f: String => T)(name: String) = complete(f(name))
 
