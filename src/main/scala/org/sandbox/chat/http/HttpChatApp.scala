@@ -1,6 +1,7 @@
 package org.sandbox.chat.http
 
 import org.sandbox.chat.ChatServer
+import org.sandbox.chat.Settings
 import org.sandbox.chat.sse.SseChatService
 
 import akka.actor.ActorRef
@@ -13,6 +14,7 @@ import akka.stream.scaladsl.Sink
 object HttpChatApp extends App {
 
   implicit val system = ActorSystem("chat-http")
+  val settings = Settings(system)
   import system.dispatcher
   implicit val materializer = ActorFlowMaterializer()
 
@@ -26,11 +28,11 @@ object HttpChatApp extends App {
 
   val chatRoutes = ChatRoutes(chatServerActions)
 
-  val host = "localhost"
-  val port = 8080
+  val interface = settings.httpService.interface
+  val port = settings.httpService.port
 
   val requestHandler = Route.handlerFlow(chatRoutes)
-  val serverSource = Http(system).bind(interface = host, port = port)
+  val serverSource = Http(system).bind(interface = interface, port = port)
 //  Http(system).bindAndstartHandlingWith(requestHandler, interface = "localhost", port = 8080)
 
   val bindingFuture = serverSource.to(Sink.foreach { connection =>
@@ -38,6 +40,6 @@ object HttpChatApp extends App {
     connection handleWith requestHandler
   }).run()
 
-  println(s"HttpChatApp listening on $host:$port")
+  println(s"HttpChatApp listening on $interface:$port")
   system.registerOnTermination(println(s"ActorSystem ${system.name} shutting down ..."))
 }

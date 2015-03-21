@@ -2,6 +2,8 @@ package org.sandbox.chat.sse
 
 import scala.concurrent.ExecutionContext
 
+import org.sandbox.chat.Settings
+
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.actor.Props
@@ -20,6 +22,7 @@ import de.heikoseeberger.akkasse.ServerSentEvent
 class SseChatService(implicit val system: ActorSystem, implicit val mat: ActorFlowMaterializer)
    extends Directives with EventStreamMarshalling
 {
+  val settings = Settings(system)
   val sseChatPublisher: ActorRef = system.actorOf(Props[SseChatPublisher])
   def getPublisher = sseChatPublisher
 
@@ -28,15 +31,15 @@ class SseChatService(implicit val system: ActorSystem, implicit val mat: ActorFl
 
   val sseSource: Source[ServerSentEvent, _] = getSseSource
 
-  val host = "127.0.0.1"
-  val port = 9000
+  val interface = settings.sseService.interface
+  val port = settings.sseService.port
 
   import system.dispatcher
   val requestHandler = Route.handlerFlow(route)
 //    Route.asyncHandler(route)
   val serverSource =
     Http(system)
-      .bind(interface = host, port = port)
+      .bind(interface = interface, port = port)
 //      .runForeach(_.flow.join(route).run())
 
   val bindingFuture = serverSource.to(Sink.foreach { connection =>
@@ -45,7 +48,7 @@ class SseChatService(implicit val system: ActorSystem, implicit val mat: ActorFl
 //    connection handleWithAsyncHandler requestHandler
   }).run()
 
-  println(s"SseChatService listening on $host:$port")
+  println(s"SseChatService listening on $interface:$port")
 
   private def route(implicit ec: ExecutionContext, mat: ActorFlowMaterializer) =
     get {
