@@ -21,10 +21,10 @@ import akka.http.unmarshalling.Unmarshaller
 import akka.stream.FlowMaterializer
 import akka.util.ByteString
 
-class ChatRoutes[T <% ToResponseMarshallable] private(chatServerActions: ChatServerActions[T])
+class ChatRoutes[T <% ToResponseMarshallable] private(chatServiceActions: HttpChatServiceActions[T])
     (implicit ec: ExecutionContext, mat: FlowMaterializer)
 {
-  import chatServerActions._
+  import chatServiceActions._
   import ChatRoutes.StringMatcher
 
   implicit val stringUnmarshaller: FromRequestUnmarshaller[String] =
@@ -55,7 +55,7 @@ class ChatRoutes[T <% ToResponseMarshallable] private(chatServerActions: ChatSer
 object ChatRoutes {
   private val StringMatcher = "(.+)".r
 
-  def apply[T <% ToResponseMarshallable](chatServerActions: ChatServerActions[T])
+  def apply[T <% ToResponseMarshallable](chatServiceActions: HttpChatServiceActions[T])
     (implicit ec: ExecutionContext, mat: FlowMaterializer): Route =
-      new ChatRoutes(chatServerActions).routes
+      new ChatRoutes(chatServiceActions).routes
 }
