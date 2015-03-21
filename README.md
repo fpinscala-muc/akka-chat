@@ -47,4 +47,5 @@ You will see the respective commands as SSEs sent to the second console:
 
 The [Akka HTTP](http://doc.akka.io/docs/akka-stream-and-http-experimental/1.0-M4/scala/http/index.html) endpoints are defined in [ChatRoutes](src/main/scala/org/sandbox/chat/http/ChatRoutes.scala).
 
-https://snap-ci.com/fpinscala-muc/akka-chat/branch/master/build_image
+
+![Alt text](https://snap-ci.com/fpinscala-muc/akka-chat/branch/master/build_image)
