@@ -1,10 +1,11 @@
-package org.sandbox.chat.http
+package org.sandbox.chat
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 
 import akka.actor.Actor
 import akka.actor.ActorRef
+import akka.actor.actorRef2Scala
 import akka.pattern.ask
 import akka.util.Timeout
 
@@ -13,7 +14,7 @@ trait ServiceActor {
 
   import ServiceActor._
 
-  def receiveStatus: Receive = {
+  def serviceReceive: Receive = {
     case GetStatus => sender ! StatusRunning
   }
 }

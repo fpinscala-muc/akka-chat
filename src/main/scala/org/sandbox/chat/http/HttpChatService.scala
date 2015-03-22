@@ -1,5 +1,6 @@
 package org.sandbox.chat.http
 
+import org.sandbox.chat.ServiceActor
 import org.sandbox.chat.SettingsActor
 
 import akka.actor.Actor
@@ -16,16 +17,14 @@ object HttpChatService {
   def props[T <% ToResponseMarshallable](
         interface: String, port: Int,
         chatServer: ActorRef,
-        chatServiceActions: HttpChatServiceActions[T],
-        chatPublisher: ActorRef): Props =
-    Props(new HttpChatService(interface, port, chatServer, chatServiceActions, chatPublisher))
+        chatServiceActions: HttpChatServiceActions[T]): Props =
+    Props(new HttpChatService(interface, port, chatServer, chatServiceActions))
 }
 
 class HttpChatService[T <% ToResponseMarshallable](
     interface: String, port: Int,
     chatServer: ActorRef,
-    chatServiceActions: HttpChatServiceActions[T],
-    chatPublisher: ActorRef)
+    chatServiceActions: HttpChatServiceActions[T])
   extends Actor with ServiceActor with SettingsActor with ImplicitFlowMaterializer with ActorLogging
 {
   import HttpChatService._
@@ -51,6 +50,6 @@ class HttpChatService[T <% ToResponseMarshallable](
     super.postStop
   }
 
-  override def receive = receiveStatus
+  override def receive = serviceReceive
 
 }

@@ -3,7 +3,7 @@ package org.sandbox.chat.sse
 import scala.concurrent.ExecutionContext
 
 import org.sandbox.chat.SettingsActor
-import org.sandbox.chat.http.ServiceActor
+import org.sandbox.chat.ServiceActor
 
 import akka.actor.Actor
 import akka.actor.ActorLogging
@@ -56,7 +56,7 @@ class SseChatService(interface: String, port: Int, sseChatPublisher: ActorRef)
     super.postStop
   }
 
-  override def receive = receiveStatus
+  override def receive = serviceReceive
 
   private def route(implicit ec: ExecutionContext, mat: ActorFlowMaterializer) =
     get {
