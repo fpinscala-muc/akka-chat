@@ -36,7 +36,6 @@ class ChatServer(publisher: ActorRef) extends Actor with ServiceActor with Actor
       participants foreach(_.who ! broadcast)
       publisher ! broadcast
     case shutdown: Shutdown =>
-      println("OK")
       ackAndPublish(shutdown.copy(participants = participants))
       log.info(s"ChatServer ${self.path.name} to shutdown in ${500 millis} ...")
       context.system.scheduler.scheduleOnce(500 millis)(context.system.shutdown)
