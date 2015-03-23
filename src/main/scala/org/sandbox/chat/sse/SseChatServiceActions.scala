@@ -8,8 +8,8 @@ import org.sandbox.chat.ChatServer.Contribution
 import org.sandbox.chat.ChatServer.Join
 import org.sandbox.chat.ChatServer.Leave
 import org.sandbox.chat.http.AckReceiver
-import org.sandbox.chat.http.ChatServerActions
 import org.sandbox.chat.http.HttpChatClient.Broadcasts
+import org.sandbox.chat.http.HttpChatServiceActions
 import org.sandbox.chat.http.Participants
 
 import SseConversions.chatServerMsgToSse
@@ -22,9 +22,9 @@ import akka.stream.scaladsl.Source
 import de.heikoseeberger.akkasse.EventStreamMarshalling
 import de.heikoseeberger.akkasse.ServerSentEvent
 
-class SseChatServerActions(val chatServer: ActorRef, ssePublisher: ActorRef,
+class SseChatServiceActions(val chatServer: ActorRef, ssePublisher: ActorRef,
     val system: ActorSystem)
-  extends ChatServerActions[ToResponseMarshallable] with Participants[ToResponseMarshallable]
+  extends HttpChatServiceActions[ToResponseMarshallable] with Participants[ToResponseMarshallable]
   with EventStreamMarshalling
 {
   import SseConversions._

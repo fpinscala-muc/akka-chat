@@ -8,12 +8,12 @@ import akka.actor.Props
 import akka.actor.actorRef2Scala
 import akka.event.LoggingReceive
 
-class ChatServer(publisher: ActorRef) extends Actor {
+class ChatServer(publisher: ActorRef) extends Actor with ServiceActor {
   import ChatServer._
 
   var participants: Set[Participant] = Set.empty
 
-  override def receive: Actor.Receive = LoggingReceive {
+  private def chatReceive: Receive = {
     case join@Join(who) =>
       participants += who
       sender ! Ack(join)
@@ -26,6 +26,10 @@ class ChatServer(publisher: ActorRef) extends Actor {
     case broadcast: Broadcast =>
       participants foreach(_.who ! broadcast)
       publisher ! broadcast
+  }
+
+  override def receive: Receive = LoggingReceive {
+    chatReceive orElse serviceReceive
   }
 }
 

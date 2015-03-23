@@ -2,8 +2,12 @@ package org.sandbox.chat.sse
 
 import scala.concurrent.ExecutionContext
 
+import org.sandbox.chat.SettingsActor
+import org.sandbox.chat.ServiceActor
+
+import akka.actor.Actor
+import akka.actor.ActorLogging
 import akka.actor.ActorRef
-import akka.actor.ActorSystem
 import akka.actor.Props
 import akka.http.Http
 import akka.http.marshalling.ToResponseMarshallable.apply
@@ -12,40 +16,47 @@ import akka.http.server.Directives
 import akka.http.server.Route
 import akka.stream.ActorFlowMaterializer
 import akka.stream.actor.ActorPublisher
+import akka.stream.scaladsl.ImplicitFlowMaterializer
 import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
 import de.heikoseeberger.akkasse.EventStreamMarshalling
 import de.heikoseeberger.akkasse.ServerSentEvent
 
-class SseChatService(implicit val system: ActorSystem, implicit val mat: ActorFlowMaterializer)
-   extends Directives with EventStreamMarshalling
-{
-  val sseChatPublisher: ActorRef = system.actorOf(Props[SseChatPublisher])
-  def getPublisher = sseChatPublisher
+object SseChatService {
+  def props(interface: String, port: Int, sseChatPublisher: ActorRef): Props =
+    Props(new SseChatService(interface, port, sseChatPublisher))
+}
 
-  def getChatServerActions(chatServer: ActorRef) =
-    new SseChatServerActions(chatServer, sseChatPublisher, system)
+class SseChatService(interface: String, port: Int, sseChatPublisher: ActorRef)
+  extends Actor with ServiceActor with SettingsActor with ImplicitFlowMaterializer
+  with ActorLogging with Directives with EventStreamMarshalling
+{
+  import SseChatService._
 
   val sseSource: Source[ServerSentEvent, _] = getSseSource
 
-  val host = "127.0.0.1"
-  val port = 9000
-
-  import system.dispatcher
+  import context.dispatcher
   val requestHandler = Route.handlerFlow(route)
 //    Route.asyncHandler(route)
   val serverSource =
-    Http(system)
-      .bind(interface = host, port = port)
+    Http(context.system)
+      .bind(interface = interface, port = port)
 //      .runForeach(_.flow.join(route).run())
 
   val bindingFuture = serverSource.to(Sink.foreach { connection =>
-    system.log.info(s"SseChatService: accepted new connection from ${connection.remoteAddress}")
+    log.info(s"SseChatService: accepted new connection from ${connection.remoteAddress}")
     connection handleWith requestHandler
 //    connection handleWithAsyncHandler requestHandler
   }).run()
 
-  println(s"SseChatService listening on $host:$port")
+  println(s"SseChatService listening on $interface:$port")
+
+  override def postStop = {
+    println(s"SseChatService [$interface:$port] shutting down ...")
+    super.postStop
+  }
+
+  override def receive = serviceReceive
 
   private def route(implicit ec: ExecutionContext, mat: ActorFlowMaterializer) =
     get {

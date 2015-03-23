@@ -17,8 +17,8 @@ import akka.http.model.StatusCodes.InternalServerError
 import akka.http.model.StatusCodes.NotFound
 import akka.http.model.StatusCodes.OK
 
-class HttpChatServerActions(val chatServer: ActorRef, val system: ActorSystem)
-  extends ChatServerActions[HttpResponse] with Participants[HttpResponse]
+class HttpChatServiceActionsImpl(val chatServer: ActorRef, val system: ActorSystem)
+  extends HttpChatServiceActions[HttpResponse] with Participants[HttpResponse]
 {
   import org.sandbox.chat.ChatServer._
 

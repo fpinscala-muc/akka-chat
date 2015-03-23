@@ -1,43 +1,47 @@
 package org.sandbox.chat.http
 
 import org.sandbox.chat.ChatServer
+import org.sandbox.chat.Settings
+import org.sandbox.chat.sse.SseChatPublisher
 import org.sandbox.chat.sse.SseChatService
-
+import org.sandbox.chat.sse.SseChatServiceActions
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
-import akka.http.Http
-import akka.http.server.Route
-import akka.stream.ActorFlowMaterializer
-import akka.stream.scaladsl.Sink
+import akka.actor.Props
+import org.sandbox.chat.ServiceActor
 
 object HttpChatApp extends App {
 
   implicit val system = ActorSystem("chat-http")
-  import system.dispatcher
-  implicit val materializer = ActorFlowMaterializer()
+  val settings = Settings(system)
 
-  val sseChatService = new SseChatService
+  val chatPublisher: ActorRef = system.actorOf(Props[SseChatPublisher])
 
-  val chatPublisher: ActorRef = sseChatService.getPublisher
   val chatServer = system.actorOf(ChatServer.props(chatPublisher), "ChuckNorris")
+  waitForRunningService(chatServer)
 
-  val chatServerActions = //new HttpChatServerActions(chatServer, system)
-    sseChatService.getChatServerActions(chatServer)
+  val sseChatService =
+    system.actorOf(SseChatService.props(
+        settings.sseService.interface, settings.sseService.port,
+        chatPublisher))
+  waitForRunningService(sseChatService)
 
-  val chatRoutes = ChatRoutes(chatServerActions)
+  val chatServiceActions = //new HttpChatServerActions(chatServer, system)
+    new SseChatServiceActions(chatServer, chatPublisher, system)
 
-  val host = "localhost"
-  val port = 8080
+  val httpChatService =
+    system.actorOf(HttpChatService.props(
+        settings.httpService.interface, settings.httpService.port,
+        chatServer, chatServiceActions))
+  waitForRunningService(httpChatService)
 
-  val requestHandler = Route.handlerFlow(chatRoutes)
-  val serverSource = Http(system).bind(interface = host, port = port)
-//  Http(system).bindAndstartHandlingWith(requestHandler, interface = "localhost", port = 8080)
-
-  val bindingFuture = serverSource.to(Sink.foreach { connection =>
-    system.log.info(s"HttpChatApp: accepted new connection from ${connection.remoteAddress}")
-    connection handleWith requestHandler
-  }).run()
-
-  println(s"HttpChatApp listening on $host:$port")
+  println(s"HttpChatApp with ActorSystem ${system.name} started")
   system.registerOnTermination(println(s"ActorSystem ${system.name} shutting down ..."))
+
+  system.awaitTermination
+
+  private def waitForRunningService(service: ActorRef) = {
+    val status = ServiceActor.getStatus(service)
+    require(status == ServiceActor.StatusRunning)
+  }
 }
