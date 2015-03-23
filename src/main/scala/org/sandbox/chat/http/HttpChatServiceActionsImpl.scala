@@ -48,7 +48,7 @@ class HttpChatServiceActionsImpl(val chatServer: ActorRef, val system: ActorSyst
   override def onContribution(name: String, msg: String) = {
     forParticipant(name) { participant =>
       withAck(participant.who, Contribution(participant, msg)) {
-        ok(s"broadcasted: $msg")
+        ok(s"contribution: $msg")
       }
     }
   }

@@ -27,20 +27,19 @@ trait HttpChat {
   val chatServer = system.actorOf(ChatServer.props(chatPublisher), "ChuckNorris")
   waitForRunningService(chatServer)
 
-  val sseChatService =
-    system.actorOf(SseChatService.props(
-        settings.sseService.interface, settings.sseService.port,
-        chatPublisher))
-  waitForRunningService(sseChatService)
-
   val chatServiceActions = new HttpChatServiceActionsImpl(chatServer, system)
 //    new SseChatServiceActions(chatServer, chatPublisher, system)
-
   val httpChatService =
     system.actorOf(HttpChatService.props(
         settings.httpService.interface, settings.httpService.port,
         chatServer, chatServiceActions))
   waitForRunningService(httpChatService)
+
+  val sseChatService =
+    system.actorOf(SseChatService.props(
+        settings.sseService.interface, settings.sseService.port,
+        chatPublisher))
+  waitForRunningService(sseChatService)
 
   system.log.info(s"HttpChatApp with ActorSystem ${system.name} started")
   system.registerOnTermination(system.log.info(s"ActorSystem ${system.name} shutting down ..."))
