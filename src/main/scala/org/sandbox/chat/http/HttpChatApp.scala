@@ -10,10 +10,17 @@ import akka.actor.ActorSystem
 import akka.actor.Props
 import org.sandbox.chat.ServiceActor
 
-object HttpChatApp extends App {
+trait HttpChat {
 
   implicit val system = ActorSystem("chat-http")
   val settings = Settings(system)
+
+  def onReady: Unit = {}
+
+//  def shutdown = {
+//    system.shutdown
+//    system.awaitTermination
+//  }
 
   val chatPublisher: ActorRef = system.actorOf(Props[SseChatPublisher])
 
@@ -26,8 +33,8 @@ object HttpChatApp extends App {
         chatPublisher))
   waitForRunningService(sseChatService)
 
-  val chatServiceActions = //new HttpChatServerActions(chatServer, system)
-    new SseChatServiceActions(chatServer, chatPublisher, system)
+  val chatServiceActions = new HttpChatServiceActionsImpl(chatServer, system)
+//    new SseChatServiceActions(chatServer, chatPublisher, system)
 
   val httpChatService =
     system.actorOf(HttpChatService.props(
@@ -35,8 +42,10 @@ object HttpChatApp extends App {
         chatServer, chatServiceActions))
   waitForRunningService(httpChatService)
 
-  println(s"HttpChatApp with ActorSystem ${system.name} started")
-  system.registerOnTermination(println(s"ActorSystem ${system.name} shutting down ..."))
+  system.log.info(s"HttpChatApp with ActorSystem ${system.name} started")
+  system.registerOnTermination(system.log.info(s"ActorSystem ${system.name} shutting down ..."))
+
+  onReady
 
   system.awaitTermination
 
@@ -45,3 +54,5 @@ object HttpChatApp extends App {
     require(status == ServiceActor.StatusRunning)
   }
 }
+
+object HttpChatApp extends App with HttpChat
