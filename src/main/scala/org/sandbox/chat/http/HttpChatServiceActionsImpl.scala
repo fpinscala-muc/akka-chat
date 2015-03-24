@@ -1,7 +1,5 @@
 package org.sandbox.chat.http
 
-import scala.concurrent.duration.DurationInt
-
 import org.sandbox.chat.ChatServer.Ack
 import org.sandbox.chat.ChatServer.Ackable
 import org.sandbox.chat.ChatServer.Contribution
@@ -21,8 +19,6 @@ class HttpChatServiceActionsImpl(val chatServer: ActorRef, val system: ActorSyst
   extends HttpChatServiceActions[HttpResponse] with Participants[HttpResponse]
 {
   import org.sandbox.chat.ChatServer._
-
-  import system.dispatcher
 
   private def ok(msg: String) = HttpResponse(OK, entity = s"$msg\n")
   override def notFound(name: String) = HttpResponse(NotFound, entity = s"not found: $name\n")
@@ -52,7 +48,7 @@ class HttpChatServiceActionsImpl(val chatServer: ActorRef, val system: ActorSyst
   override def onContribution(name: String, msg: String) = {
     forParticipant(name) { participant =>
       withAck(participant.who, Contribution(participant, msg)) {
-        ok(s"broadcasted: $msg")
+        ok(s"contribution: $msg")
       }
     }
   }
@@ -63,7 +59,7 @@ class HttpChatServiceActionsImpl(val chatServer: ActorRef, val system: ActorSyst
     }
   }
   override def onShutdown = {
-    system.scheduler.scheduleOnce(500 millis)(system.shutdown)
+    val participantNames = askForShutdown
     ok(s"shutdown: ${system.name} (participants: ${participantNames.mkString(", ")})")
   }
 }

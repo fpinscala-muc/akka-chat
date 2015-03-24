@@ -1,10 +1,13 @@
 package org.sandbox.chat.http
 
+import scala.annotation.migration
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.reflect.ClassTag
 
+import org.sandbox.chat.ChatServer.Ack
 import org.sandbox.chat.ChatServer.Participant
+import org.sandbox.chat.ChatServer.Shutdown
 import org.sandbox.chat.http.HttpChatClient.Broadcasts
 import org.sandbox.chat.http.HttpChatClient.GetBroadcasts
 
@@ -45,4 +48,10 @@ trait Participants[T] {
 
   def askForBroadcasts(participant: Participant): Broadcasts =
     askFor[Broadcasts](participant.who, GetBroadcasts)
+
+  def askForShutdown = {
+    val Ack(Shutdown(participants)) =
+      Await.result((chatServer ? Shutdown()).mapTo[Ack], timeout.duration)
+    (participants map(_.name)).toSeq.sorted
+  }
 }

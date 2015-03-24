@@ -35,7 +35,7 @@ class SseChatServiceActions(val chatServer: ActorRef, ssePublisher: ActorRef,
     singleSseSource(ServerSentEvent(name, "notfound"))
 
   private def publish(sse: ServerSentEvent) = {
-    ssePublisher ! sse
+//    ssePublisher ! sse
     sse
   }
 
@@ -90,7 +90,7 @@ class SseChatServiceActions(val chatServer: ActorRef, ssePublisher: ActorRef,
   }
 
   def onShutdown: ToResponseMarshallable = {
-    system.scheduler.scheduleOnce(500 millis)(system.shutdown)
+    val participantNames = askForShutdown
     val sse =
       ServerSentEvent(
           s"shutdown: ${system.name} (participants: ${participantNames.mkString(", ")})",
