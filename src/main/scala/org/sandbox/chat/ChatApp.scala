@@ -7,9 +7,8 @@ object ChatApp extends App {
 
   val system = ActorSystem("chat-app")
 
-  val chatMsgPublisher = system.actorOf(Props[ChatMsgPublisher])
   val server =
-    system.actorOf(ChatServer.props(chatMsgPublisher), "ChuckNorris")
+    system.actorOf(ChatServer.props(), "ChuckNorris")
 
   val Seq(client1, client2, client3) =
     (1 to 3) map { i =>

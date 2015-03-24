@@ -4,6 +4,10 @@ import java.util.Date
 
 import scala.concurrent.duration.DurationInt
 
+import org.sandbox.chat.http.HttpChatService
+import org.sandbox.chat.http.HttpChatServiceActionsImpl
+import org.sandbox.chat.sse.SseChatService
+
 import akka.actor.Actor
 import akka.actor.ActorLogging
 import akka.actor.ActorRef
@@ -11,14 +15,20 @@ import akka.actor.Props
 import akka.actor.actorRef2Scala
 import akka.event.LoggingReceive
 
-class ChatServer(publisher: ActorRef) extends Actor with ServiceActor with ActorLogging {
+class ChatServer extends Actor with ServiceActor with ActorLogging {
   import ChatServer._
   import context.dispatcher
+
+  val settings = Settings(context.system)
+
+  val chatMsgPublisher = context.actorOf(Props[ChatMsgPublisher])
+  val httpChatService = createHttpService
+  val sseChatService = createSseService
 
   var participants: Set[Participant] = Set.empty
 
   private def ackAndPublish(msg: ChatServerMsg with Ackable) = {
-    publisher ! msg
+    chatMsgPublisher ! msg
     sender ! Ack(msg)
   }
 
@@ -34,7 +44,7 @@ class ChatServer(publisher: ActorRef) extends Actor with ServiceActor with Actor
       ackAndPublish(contribution)
     case broadcast: Broadcast =>
       participants foreach(_.who ! broadcast)
-      publisher ! broadcast
+      chatMsgPublisher ! broadcast
     case shutdown: Shutdown =>
       ackAndPublish(shutdown.copy(participants = participants))
       log.info(s"ChatServer ${self.path.name} to shutdown in ${500 millis} ...")
@@ -51,11 +61,27 @@ class ChatServer(publisher: ActorRef) extends Actor with ServiceActor with Actor
   }
 
   log.info(s"ChatServer ${self.path.name} started")
+
+  private def createHttpService: ActorRef = {
+    val chatServiceActions = new HttpChatServiceActionsImpl(self, context.system)
+    val httpChatService =
+      context.actorOf(HttpChatService.props(
+        settings.httpService.interface, settings.httpService.port,
+        self, chatServiceActions))
+    waitForRunningService(httpChatService)
+  }
+
+  private def createSseService: ActorRef = {
+    val sseChatService =
+      context.actorOf(SseChatService.props(
+        settings.sseService.interface, settings.sseService.port,
+        chatMsgPublisher))
+    waitForRunningService(sseChatService)
+  }
 }
 
 object ChatServer {
-  def props(publisher: ActorRef): Props =
-    Props(new ChatServer(publisher))
+  def props(): Props = Props[ChatServer]
 
   case class Participant(who: ActorRef, name: String)
 
@@ -68,4 +94,10 @@ object ChatServer {
   case class Broadcast(authorName: String, msg: String, when: Date  = new Date) extends ChatServerMsg
   case class Shutdown(participants: Set[Participant] = Set()) extends ChatServerMsg with Ackable
   case class Ack(what: Ackable) extends ChatServerMsg
+
+  private def waitForRunningService(service: ActorRef) = {
+    val status = ServiceActor.getStatus(service)
+    require(status == ServiceActor.StatusRunning)
+    service
+  }
 }

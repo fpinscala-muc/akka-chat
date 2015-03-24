@@ -4,7 +4,6 @@ import org.sandbox.chat.ChatMsgPublisher
 import org.sandbox.chat.ChatServer
 import org.sandbox.chat.ServiceActor
 import org.sandbox.chat.Settings
-import org.sandbox.chat.sse.SseChatService
 
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
@@ -24,22 +23,8 @@ trait HttpChat {
 
   val chatMsgPublisher: ActorRef = system.actorOf(Props[ChatMsgPublisher])
 
-  val chatServer = system.actorOf(ChatServer.props(chatMsgPublisher), "ChuckNorris")
+  val chatServer = system.actorOf(ChatServer.props, "ChuckNorris")
   waitForRunningService(chatServer)
-
-  val chatServiceActions = new HttpChatServiceActionsImpl(chatServer, system)
-//    new SseChatServiceActions(chatServer, chatPublisher, system)
-  val httpChatService =
-    system.actorOf(HttpChatService.props(
-        settings.httpService.interface, settings.httpService.port,
-        chatServer, chatServiceActions))
-  waitForRunningService(httpChatService)
-
-  val sseChatService =
-    system.actorOf(SseChatService.props(
-        settings.sseService.interface, settings.sseService.port,
-        chatMsgPublisher))
-  waitForRunningService(sseChatService)
 
   system.log.info(s"HttpChatApp with ActorSystem ${system.name} started")
   system.registerOnTermination(system.log.info(s"ActorSystem ${system.name} shutting down ..."))
