@@ -2,8 +2,9 @@ package org.sandbox.chat.sse
 
 import scala.concurrent.ExecutionContext
 
-import org.sandbox.chat.SettingsActor
+import org.sandbox.chat.ChatServer.ChatServerMsg
 import org.sandbox.chat.ServiceActor
+import org.sandbox.chat.SettingsActor
 
 import akka.actor.Actor
 import akka.actor.ActorLogging
@@ -22,12 +23,7 @@ import akka.stream.scaladsl.Source
 import de.heikoseeberger.akkasse.EventStreamMarshalling
 import de.heikoseeberger.akkasse.ServerSentEvent
 
-object SseChatService {
-  def props(interface: String, port: Int, sseChatPublisher: ActorRef): Props =
-    Props(new SseChatService(interface, port, sseChatPublisher))
-}
-
-class SseChatService(interface: String, port: Int, sseChatPublisher: ActorRef)
+class SseChatService(interface: String, port: Int, chatMsgPublisher: ActorRef)
   extends Actor with ServiceActor with SettingsActor with ImplicitFlowMaterializer
   with ActorLogging with Directives with EventStreamMarshalling
 {
@@ -63,10 +59,16 @@ class SseChatService(interface: String, port: Int, sseChatPublisher: ActorRef)
       complete(sseSource)
     }
 
-  private def getSseSource = {
+  private def getSseSource: Source[ServerSentEvent, _] = {
     // a normal Publisher can only accept one Subscriber, so we have to fan out
-    val sseMultiSubscriberPublisher = Source(ActorPublisher[ServerSentEvent](sseChatPublisher))
+    val sseMultiSubscriberPublisher = Source(ActorPublisher[ChatServerMsg](chatMsgPublisher))
+      .map(SseConversions.chatServerMsgToSse)
       .runWith(Sink.fanoutPublisher(initialBufferSize = 8, maximumBufferSize = 16))
     Source(sseMultiSubscriberPublisher)
   }
+}
+
+object SseChatService {
+  def props(interface: String, port: Int, chatMsgPublisher: ActorRef): Props =
+    Props(new SseChatService(interface, port, chatMsgPublisher))
 }

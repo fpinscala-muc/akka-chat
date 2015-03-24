@@ -1,14 +1,14 @@
 package org.sandbox.chat.http
 
+import org.sandbox.chat.ChatMsgPublisher
 import org.sandbox.chat.ChatServer
+import org.sandbox.chat.ServiceActor
 import org.sandbox.chat.Settings
-import org.sandbox.chat.sse.SseChatPublisher
 import org.sandbox.chat.sse.SseChatService
-import org.sandbox.chat.sse.SseChatServiceActions
+
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.actor.Props
-import org.sandbox.chat.ServiceActor
 
 trait HttpChat {
 
@@ -22,9 +22,9 @@ trait HttpChat {
 //    system.awaitTermination
 //  }
 
-  val chatPublisher: ActorRef = system.actorOf(Props[SseChatPublisher])
+  val chatMsgPublisher: ActorRef = system.actorOf(Props[ChatMsgPublisher])
 
-  val chatServer = system.actorOf(ChatServer.props(chatPublisher), "ChuckNorris")
+  val chatServer = system.actorOf(ChatServer.props(chatMsgPublisher), "ChuckNorris")
   waitForRunningService(chatServer)
 
   val chatServiceActions = new HttpChatServiceActionsImpl(chatServer, system)
@@ -38,7 +38,7 @@ trait HttpChat {
   val sseChatService =
     system.actorOf(SseChatService.props(
         settings.sseService.interface, settings.sseService.port,
-        chatPublisher))
+        chatMsgPublisher))
   waitForRunningService(sseChatService)
 
   system.log.info(s"HttpChatApp with ActorSystem ${system.name} started")

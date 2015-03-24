@@ -1,24 +1,29 @@
 package org.sandbox.chat.http
 
 import scala.concurrent.Future
+
 import org.junit.runner.RunWith
 import org.sandbox.chat.BaseAkkaSpec
+import org.scalatest.Ignore
+import org.scalatest.concurrent.Eventually
+import org.scalatest.concurrent.ScalaFutures
+
 import akka.http.Http
+import akka.http.model.ContentType.apply
+import akka.http.model.HttpEntity
+import akka.http.model.HttpMethods.GET
+import akka.http.model.HttpMethods.PUT
 import akka.http.model.HttpRequest
 import akka.http.model.HttpResponse
+import akka.http.model.MediaTypes._
+import akka.http.model.StatusCodes
+import akka.http.model.Uri.apply
+import akka.http.unmarshalling.Unmarshal
 import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
-import akka.http.model.HttpMethods._
-import akka.http.model.HttpEntity
-import akka.http.model.MediaTypes._
 import akka.util.ByteString
-import org.scalatest.concurrent.ScalaFutures
-import akka.http.model.StatusCodes
-import org.scalatest.FlatSpec
-import org.scalatest.concurrent.Eventually
-import akka.http.unmarshalling.Unmarshal
-import akka.http.unmarshalling.PredefinedFromEntityUnmarshallers
 
+@Ignore
 @RunWith(classOf[org.scalatest.junit.JUnitRunner])
 class HttpChatSpec extends BaseAkkaSpec with ScalaFutures with Eventually {
 
