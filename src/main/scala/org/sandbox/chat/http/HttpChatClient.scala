@@ -24,6 +24,7 @@ class HttpChatClient private(chatServer: ActorRef) extends Actor {
   def receive: Actor.Receive = LoggingReceive {
     case broadcast: Broadcast if sender == chatServer =>
       broadcasts = broadcasts :+ broadcast
+    case broadcast: Broadcast => // ignore
     case GetBroadcasts =>
       sender ! Broadcasts(broadcasts)
       broadcasts = Seq.empty

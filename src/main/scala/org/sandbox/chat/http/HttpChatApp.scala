@@ -1,6 +1,5 @@
 package org.sandbox.chat.http
 
-import org.sandbox.chat.ChatMsgPublisher
 import org.sandbox.chat.ChatServer
 import org.sandbox.chat.ServiceActor
 import org.sandbox.chat.Settings
@@ -20,8 +19,6 @@ trait HttpChat {
 //    system.shutdown
 //    system.awaitTermination
 //  }
-
-  val chatMsgPublisher: ActorRef = system.actorOf(Props[ChatMsgPublisher])
 
   val chatServer = system.actorOf(ChatServer.props, "ChuckNorris")
   waitForRunningService(chatServer)
