@@ -21,7 +21,7 @@ import akka.pattern.ask
 import akka.pattern.pipe
 import akka.util.Timeout
 
-class ChatServer extends Actor with ServiceActor with ActorLogging {
+class ChatServer(shutdownSystem: Boolean) extends Actor with ServiceActor with ActorLogging {
   import ChatServer._
   import ParticipantAdministrator._
   import context.dispatcher
@@ -65,8 +65,12 @@ class ChatServer extends Actor with ServiceActor with ActorLogging {
           val msg = shutdown.copy(participants = participants)
           publish(msg)
           requestor ! Ack(msg)
-          log.info(s"ChatServer ${self.path.name} to shutdown in ${500 millis} ...")
-          context.system.scheduler.scheduleOnce(500 millis)(context.system.shutdown)
+          if (shutdownSystem) {
+            log.info(s"ChatServer ${self.path.name} to shutdown in ${500 millis} ...")
+            context.system.scheduler.scheduleOnce(500 millis)(context.system.shutdown)
+          } else {
+            context.stop(self)
+          }
       }
   }
 
@@ -100,7 +104,8 @@ class ChatServer extends Actor with ServiceActor with ActorLogging {
 }
 
 object ChatServer {
-  def props(): Props = Props[ChatServer]
+  def props(shutdownSystem: Boolean): Props =
+    Props(new ChatServer(shutdownSystem))
 
   case class Participant(who: ActorRef, name: String)
 

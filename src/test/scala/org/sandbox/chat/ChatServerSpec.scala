@@ -44,7 +44,7 @@ class ChatServerSpec extends TestKit(ActorSystem("ChatServerSpec", ChatServerSpe
   var server: ActorRef = _
 
   override def beforeEach = {
-    server = system.actorOf(ChatServer.props(), uniqueName("testServer"))
+    server = system.actorOf(ChatServer.props(true), uniqueName("testServer"))
   }
 
   override def afterEach =

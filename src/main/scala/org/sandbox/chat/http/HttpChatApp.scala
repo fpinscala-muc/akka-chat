@@ -20,7 +20,7 @@ trait HttpChat {
 //    system.awaitTermination
 //  }
 
-  val chatServer = system.actorOf(ChatServer.props, "ChuckNorris")
+  val chatServer = system.actorOf(ChatServer.props(true), "ChuckNorris")
   waitForRunningService(chatServer)
 
   system.log.info(s"HttpChatApp with ActorSystem ${system.name} started")

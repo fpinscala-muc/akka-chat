@@ -9,11 +9,18 @@ val akkaStreamHttpVersion = "1.0-M4"
 
 libraryDependencies ++= Seq(
   Library.akkaActor,
+  Library.akkaCluster,
+  Library.akkaContrib,
+  Library.akkaDataReplication,
   Library.akkaRemote,
   Library.akkaPersistence,
   Library.akkaSse,
+  Library.akkaSlf4j,
+  Library.logbackClassic,
   Library.akkaTestkit     % "test",
+  Library.akkaHttpTestkit % "test",
   Library.scalaTest       % "test",
+  Library.scalaMock       % "test",
   Library.scalaCheck      % "test",
   "com.github.krasserm" %% "akka-persistence-kafka" % "0.3.4",
   "com.typesafe.akka" %% "akka-http-core-experimental" % akkaStreamHttpVersion,
@@ -26,6 +33,8 @@ libraryDependencies ++= Seq(
   "junit" % "junit" % "4.12" % "test"
 //  "com.novocode" % "junit-interface" % "0.10" % "test"
 )
+
+//addCommandAlias("jCartman", "run curl -X GET http://localhost:8080/join/Cartman")
 
 testOptions += Tests.Argument(TestFrameworks.JUnit, "-v")
 
