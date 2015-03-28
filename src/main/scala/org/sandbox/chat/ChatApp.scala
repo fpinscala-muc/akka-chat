@@ -11,12 +11,12 @@ object ChatApp extends App {
 
     system.log.debug("Waiting to become a cluster member ...")
     Cluster(system).registerOnMemberUp {
-//      FlowSharding(system).start()
+//      Sharding(system).start()
       system.actorOf(Reaper.props, Reaper.Name)
-      system.log.info("Reactive Flows up and running")
+      system.log.info("Akka-Chat Cluster up and running")
     }
 
-  system.log.info(s"HttpChatApp with ActorSystem ${system.name} started")
+  system.log.info(s"ChatApp with ActorSystem ${system.name} started")
   system.registerOnTermination(system.log.info(s"ActorSystem ${system.name} shutting down ..."))
 
   system.awaitTermination
