@@ -19,6 +19,12 @@ trait ClusterEventReceiver extends Actor with ActorLogging {
 
   val cluster: Cluster
 
+  def isSelfMember(member: Member) =
+    member.address == cluster.selfAddress
+
+  def isNewMember(member: Member) =
+    !isSelfMember(member) && !clusterMembers.contains(member)
+
   var clusterMembers: Set[Member] = Set.empty
 
   implicit val timeout: Timeout
@@ -31,10 +37,10 @@ trait ClusterEventReceiver extends Actor with ActorLogging {
   def clusterEventReceive: Receive = LoggingReceive {
     case state: CurrentClusterState =>
       val upMembers =
-        state.members.filter(m => m.status == MemberStatus.Up && !clusterMembers.contains(m))
+        state.members.filter(m => m.status == MemberStatus.Up && isNewMember(m))
       clusterMembers ++= upMembers
       upMembers foreach onMemberUp
-    case MemberUp(m) if !clusterMembers.contains(m) =>
+    case MemberUp(m) if isNewMember(m) =>
       clusterMembers += m
       onMemberUp(m)
   }
@@ -47,13 +53,17 @@ trait ClusterEventReceiver extends Actor with ActorLogging {
 
   def onTerminated(actor: ActorRef): Unit
 
-  def isOwnMember(member: Member): Boolean =
-    self.path.root == RootActorPath(member.address)
+//  def isOwnMember(member: Member): Boolean = {
+//    println(s"$member $clusterMembers")
+//    println(s"${self.path.root.toSerializationFormat} ${RootActorPath(member.address).toSerializationFormat} ${self.path.root.address == member.address}")
+//    val i = self.path.root compareTo RootActorPath(member.address)
+//    println(s"i=$i")
+//    i == 0
+//  }
 
   import context.dispatcher
 
-  def getActor(member: Member, actorName: String): ActorRef = {
-    //Option[ActorRef] = { TODO bring back this return value
+  def getActor(member: Member, actorName: String): Option[ActorRef] = {
     def resolveActor: Option[ActorRef] = {
       val actorPath = RootActorPath(member.address) / "user" / actorName
       log.info(s"selecting actor $actorPath")
@@ -63,7 +73,6 @@ trait ClusterEventReceiver extends Actor with ActorLogging {
         log.error(s"could not resolve actor $actorPath: ${e.getMessage}")
       }
       val actor = Try(Await.result(actorF, timeout.duration))
-      actor.get // TODO remove this line
       actor.toOption
     }
 
@@ -72,6 +81,6 @@ trait ClusterEventReceiver extends Actor with ActorLogging {
       context watch a
       log.info(s"watching ${a.path}")
     }
-    actor.get // TODO return Option[ActorRef]
+    actor
   }
 }

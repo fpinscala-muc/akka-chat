@@ -10,7 +10,7 @@ import akka.cluster.Member
 
 class ChatServiceCluster extends ChatService with ClusterEventReceiver {
   var chatMsgPublishers: Set[ActorRef] = Set.empty
-  override def chatMsgPublisher: ActorRef =  oneOf(chatMsgPublishers)
+  override def chatMsgPublisher: ActorRef = oneOf(chatMsgPublishers)
 
   var broadcastManagers: Set[ActorRef] = Set.empty
   override def broadcastManager: ActorRef = oneOf(broadcastManagers)
@@ -35,13 +35,13 @@ class ChatServiceCluster extends ChatService with ClusterEventReceiver {
                 terminationReceive orElse chatServiceReceive
 
   override def onMemberUp(member: Member): Unit = {
-    if (member.hasRole("chatMsgPublisher") && !isOwnMember(member))
-      chatMsgPublishers += getActor(member, "chatMsgPublisher")
-    if (member.hasRole("broadcastManager") && !isOwnMember(member))
-      broadcastManagers += getActor(member, "broadcastManager")
-    if (member.hasRole("participantAdmin") && !isOwnMember(member))
-      participantAdmins += getActor(member, "participantAdmin")
+    if (member.hasRole(ChatMsgPublisherRole))
+      getActor(member, ChatMsgPublisherRole)  foreach (chatMsgPublishers += _)
+    if (member.hasRole(BroadcastManagerRole))
+      getActor(member, BroadcastManagerRole) foreach (broadcastManagers += _)
+    if (member.hasRole(ParticipantAdministratorRole))
+      getActor(member, ParticipantAdministratorRole) foreach (participantAdmins += _)
   }
 }
 
-object ChatServiceCluster extends ChatCluster[ChatServiceCluster]("chatService")
+object ChatServiceCluster extends ChatCluster[ChatServiceCluster](ChatServiceRole)

@@ -20,8 +20,8 @@ class ChatMsgPublisherCluster extends ChatMsgPublishing with ClusterEventReceive
   def receive: Receive = chatMsgReceive orElse clusterEventReceive orElse terminationReceive
 
   def onMemberUp(member: Member): Unit = {
-    if (member.hasRole("chatMsgPublisher") && !isOwnMember(member))
-      chatMsgPublishers += getActor(member, "chatMsgPublisher")
+    if (member.hasRole(ChatMsgPublisherRole))
+      getActor(member, ChatMsgPublisherRole) foreach (chatMsgPublishers += _)
   }
 
   override def onTerminated(actor: ActorRef): Unit = {
@@ -29,4 +29,4 @@ class ChatMsgPublisherCluster extends ChatMsgPublishing with ClusterEventReceive
   }
 }
 
-object ChatMsgPublisherCluster extends ChatCluster[ChatMsgPublisherCluster]("chatMsgPublisher")
+object ChatMsgPublisherCluster extends ChatCluster[ChatMsgPublisherCluster](ChatMsgPublisherRole)
