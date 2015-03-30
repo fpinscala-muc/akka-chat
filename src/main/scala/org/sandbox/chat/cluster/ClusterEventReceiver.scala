@@ -1,6 +1,8 @@
 package org.sandbox.chat.cluster
 
 import scala.concurrent.Await
+import scala.util.Try
+
 import akka.actor.Actor
 import akka.actor.ActorLogging
 import akka.actor.ActorRef
@@ -8,12 +10,15 @@ import akka.actor.RootActorPath
 import akka.actor.Terminated
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent.CurrentClusterState
+import akka.cluster.ClusterEvent.MemberExited
+import akka.cluster.ClusterEvent.MemberRemoved
 import akka.cluster.ClusterEvent.MemberUp
+import akka.cluster.ClusterEvent.ReachableMember
+import akka.cluster.ClusterEvent.UnreachableMember
 import akka.cluster.Member
 import akka.cluster.MemberStatus
 import akka.event.LoggingReceive
 import akka.util.Timeout
-import scala.util.Try
 
 trait ClusterEventReceiver extends Actor with ActorLogging {
 
@@ -31,7 +36,10 @@ trait ClusterEventReceiver extends Actor with ActorLogging {
 
   // subscribe to cluster changes, MemberUp
   // re-subscribe when restart
-  override def preStart(): Unit = cluster.subscribe(self, classOf[MemberUp])
+  override def preStart(): Unit =
+    cluster.subscribe(self, classOf[MemberUp],
+        classOf[UnreachableMember], classOf[ReachableMember],
+        classOf[MemberExited], classOf[MemberRemoved])
   override def postStop(): Unit = cluster.unsubscribe(self)
 
   def clusterEventReceive: Receive = LoggingReceive {
@@ -43,6 +51,10 @@ trait ClusterEventReceiver extends Actor with ActorLogging {
     case MemberUp(m) if isNewMember(m) =>
       clusterMembers += m
       onMemberUp(m)
+    case UnreachableMember(m) => clusterMembers -= m
+    case ReachableMember(m) => clusterMembers += m
+    case MemberExited(m) => clusterMembers -= m
+    case MemberRemoved(m, _) => clusterMembers -= m
   }
 
   def onMemberUp(member: Member): Unit
@@ -52,14 +64,6 @@ trait ClusterEventReceiver extends Actor with ActorLogging {
   }
 
   def onTerminated(actor: ActorRef): Unit
-
-//  def isOwnMember(member: Member): Boolean = {
-//    println(s"$member $clusterMembers")
-//    println(s"${self.path.root.toSerializationFormat} ${RootActorPath(member.address).toSerializationFormat} ${self.path.root.address == member.address}")
-//    val i = self.path.root compareTo RootActorPath(member.address)
-//    println(s"i=$i")
-//    i == 0
-//  }
 
   import context.dispatcher
 
