@@ -35,11 +35,11 @@ class ChatServiceCluster extends ChatService with ClusterEventReceiver {
                 terminationReceive orElse chatServiceReceive
 
   override def onMemberUp(member: Member): Unit = {
-    if (member.hasRole("chatMsgPublisher"))
+    if (member.hasRole("chatMsgPublisher") && !isOwnMember(member))
       chatMsgPublishers += getActor(member, "chatMsgPublisher")
-    if (member.hasRole("broadcastManager"))
+    if (member.hasRole("broadcastManager") && !isOwnMember(member))
       broadcastManagers += getActor(member, "broadcastManager")
-    if (member.hasRole("participantAdmin"))
+    if (member.hasRole("participantAdmin") && !isOwnMember(member))
       participantAdmins += getActor(member, "participantAdmin")
   }
 }

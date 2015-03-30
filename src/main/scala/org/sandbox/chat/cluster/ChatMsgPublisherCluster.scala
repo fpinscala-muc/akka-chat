@@ -20,7 +20,7 @@ class ChatMsgPublisherCluster extends ChatMsgPublishing with ClusterEventReceive
   def receive: Receive = chatMsgReceive orElse clusterEventReceive orElse terminationReceive
 
   def onMemberUp(member: Member): Unit = {
-    if (member.hasRole("chatMsgPublisher"))
+    if (member.hasRole("chatMsgPublisher") && !isOwnMember(member))
       chatMsgPublishers += getActor(member, "chatMsgPublisher")
   }
 

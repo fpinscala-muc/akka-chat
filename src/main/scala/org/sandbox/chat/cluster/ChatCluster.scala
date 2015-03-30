@@ -7,7 +7,9 @@ import scala.reflect.ClassTag
 import akka.actor.Actor
 
 class ChatCluster[T <: Actor: ClassTag](actorName: String) {
-  val clusterName = "ChatCluster"
+
+  val clusterName = "akka-chat-cluster"
+
   def main(args: Array[String]): Unit = {
     // Override the configuration of the port when specified as program argument
     val port = if (args.isEmpty) "0" else args(0)

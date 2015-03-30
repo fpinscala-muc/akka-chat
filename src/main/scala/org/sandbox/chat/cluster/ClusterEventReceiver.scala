@@ -1,7 +1,6 @@
 package org.sandbox.chat.cluster
 
 import scala.concurrent.Await
-
 import akka.actor.Actor
 import akka.actor.ActorLogging
 import akka.actor.ActorRef
@@ -14,10 +13,13 @@ import akka.cluster.Member
 import akka.cluster.MemberStatus
 import akka.event.LoggingReceive
 import akka.util.Timeout
+import scala.util.Try
 
 trait ClusterEventReceiver extends Actor with ActorLogging {
 
   val cluster: Cluster
+
+  var clusterMembers: Set[Member] = Set.empty
 
   implicit val timeout: Timeout
 
@@ -28,8 +30,13 @@ trait ClusterEventReceiver extends Actor with ActorLogging {
 
   def clusterEventReceive: Receive = LoggingReceive {
     case state: CurrentClusterState =>
-      state.members.filter(_.status == MemberStatus.Up) foreach onMemberUp
-    case MemberUp(m) => onMemberUp(m)
+      val upMembers =
+        state.members.filter(m => m.status == MemberStatus.Up && !clusterMembers.contains(m))
+      clusterMembers ++= upMembers
+      upMembers foreach onMemberUp
+    case MemberUp(m) if !clusterMembers.contains(m) =>
+      clusterMembers += m
+      onMemberUp(m)
   }
 
   def onMemberUp(member: Member): Unit
@@ -40,12 +47,31 @@ trait ClusterEventReceiver extends Actor with ActorLogging {
 
   def onTerminated(actor: ActorRef): Unit
 
+  def isOwnMember(member: Member): Boolean =
+    self.path.root == RootActorPath(member.address)
+
+  import context.dispatcher
+
   def getActor(member: Member, actorName: String): ActorRef = {
-    val actorSelection =
-      context.actorSelection(RootActorPath(member.address) / "user" / actorName)
-    val actor = Await.result(actorSelection.resolveOne, timeout.duration)
-    context watch actor
-    log.info(s"registered ${actor.path}")
-    actor
+    //Option[ActorRef] = { TODO bring back this return value
+    def resolveActor: Option[ActorRef] = {
+      val actorPath = RootActorPath(member.address) / "user" / actorName
+      log.info(s"selecting actor $actorPath")
+      val actorSelection = context.actorSelection(actorPath)
+      val actorF = actorSelection.resolveOne
+      actorF onFailure { case e =>
+        log.error(s"could not resolve actor $actorPath: ${e.getMessage}")
+      }
+      val actor = Try(Await.result(actorF, timeout.duration))
+      actor.get // TODO remove this line
+      actor.toOption
+    }
+
+    val actor = resolveActor
+    actor foreach { a =>
+      context watch a
+      log.info(s"watching ${a.path}")
+    }
+    actor.get // TODO return Option[ActorRef]
   }
 }
