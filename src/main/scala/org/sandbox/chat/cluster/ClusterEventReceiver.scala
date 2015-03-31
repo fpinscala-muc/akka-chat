@@ -51,13 +51,22 @@ trait ClusterEventReceiver extends Actor with ActorLogging {
     case MemberUp(m) if isNewMember(m) =>
       clusterMembers += m
       onMemberUp(m)
-    case UnreachableMember(m) => clusterMembers -= m
-    case ReachableMember(m) => clusterMembers += m
-    case MemberExited(m) => clusterMembers -= m
-    case MemberRemoved(m, _) => clusterMembers -= m
+    case UnreachableMember(m) =>
+      clusterMembers -= m
+      onMemberDown(m)
+    case ReachableMember(m) =>
+      clusterMembers += m
+      onMemberUp(m)
+    case MemberExited(m) =>
+      clusterMembers -= m
+      onMemberDown(m)
+    case MemberRemoved(m, _) =>
+      clusterMembers -= m
+      onMemberDown(m)
   }
 
   def onMemberUp(member: Member): Unit
+  def onMemberDown(member: Member): Unit
 
   def terminationReceive: Receive = LoggingReceive {
     case Terminated(actor) => onTerminated(actor)

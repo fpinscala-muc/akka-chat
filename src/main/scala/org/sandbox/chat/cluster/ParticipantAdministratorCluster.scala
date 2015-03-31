@@ -10,22 +10,19 @@ import akka.cluster.Cluster
 
 class ParticipantAdministratorCluster extends ParticipantAdministrating with ClusterEventReceiver {
 
-  var participantAdmins: Set[ActorRef] = Set.empty
-
   override val cluster = Cluster(context.system)
 
   override implicit val timeout = Timeout(1 second)
 
+  val participantAdmins =
+    new ChatClusterActors(ParticipantAdministratorRole, context, timeout, log)
+
   def receive: Receive = participantReceive orElse clusterEventReceive orElse terminationReceive
 
-  def onMemberUp(member: Member): Unit = {
-    if (member.hasRole(ParticipantAdministratorRole))
-      getActor(member, ParticipantAdministratorRole) foreach (participantAdmins += _)
-  }
+  override def onMemberUp(member: Member): Unit = participantAdmins.onMemberUp(member)
+  override def onMemberDown(member: Member): Unit = participantAdmins.onMemberDown(member)
 
-  override def onTerminated(actor: ActorRef): Unit = {
-    participantAdmins = participantAdmins.filterNot(_ == actor)
-  }
+  override def onTerminated(actor: ActorRef): Unit = participantAdmins.onTerminated(actor)
 }
 
 object ParticipantAdministratorCluster extends ChatCluster[ParticipantAdministratorCluster](ParticipantAdministratorRole)

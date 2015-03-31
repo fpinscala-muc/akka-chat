@@ -11,22 +11,18 @@ import akka.util.Timeout
 
 class ChatMsgPublisherCluster extends ChatMsgPublishing with ClusterEventReceiver {
 
-  var chatMsgPublishers: Set[ActorRef] = Set.empty
+  override implicit val timeout = Timeout(1 second)
+
+  val chatMsgPublishers =
+    new ChatClusterActors(ChatMsgPublisherRole, context, timeout, log)
 
   override val cluster = Cluster(context.system)
 
-  override implicit val timeout = Timeout(1 second)
-
   def receive: Receive = chatMsgReceive orElse clusterEventReceive orElse terminationReceive
 
-  def onMemberUp(member: Member): Unit = {
-    if (member.hasRole(ChatMsgPublisherRole))
-      getActor(member, ChatMsgPublisherRole) foreach (chatMsgPublishers += _)
-  }
-
-  override def onTerminated(actor: ActorRef): Unit = {
-    chatMsgPublishers = chatMsgPublishers.filterNot(_ == actor)
-  }
+  override def onMemberUp(member: Member): Unit = chatMsgPublishers.onMemberUp(member)
+  override def onMemberDown(member: Member): Unit = chatMsgPublishers.onMemberDown(member)
+  override def onTerminated(actor: ActorRef): Unit = chatMsgPublishers.onTerminated(actor)
 }
 
 object ChatMsgPublisherCluster extends ChatCluster[ChatMsgPublisherCluster](ChatMsgPublisherRole)

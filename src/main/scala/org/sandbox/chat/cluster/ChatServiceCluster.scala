@@ -9,14 +9,20 @@ import akka.cluster.Cluster
 import akka.cluster.Member
 
 class ChatServiceCluster extends ChatService with ClusterEventReceiver {
-  var chatMsgPublishers: Set[ActorRef] = Set.empty
-  override def chatMsgPublisher: ActorRef = oneOf(chatMsgPublishers)
+  val chatMsgPublishers =
+    new ChatClusterActors(ChatMsgPublisherRole, context, timeout, log)
+  override def chatMsgPublisher: ActorRef =
+    chatMsgPublishers.randomActor getOrElse(throw new Exception("no chatMsgPublishers available"))
 
-  var broadcastManagers: Set[ActorRef] = Set.empty
-  override def broadcastManager: ActorRef = oneOf(broadcastManagers)
+  val broadcastManagers =
+    new ChatClusterActors(BroadcastManagerRole, context, timeout, log)
+  override def broadcastManager: ActorRef =
+    broadcastManagers.randomActor getOrElse(throw new Exception("no broadcastManagers available"))
 
-  var participantAdmins: Set[ActorRef] = Set.empty
-  override def participantAdmin: ActorRef = oneOf(participantAdmins)
+  val participantAdmins =
+    new ChatClusterActors(ParticipantAdministratorRole, context, timeout, log)
+  override def participantAdmin: ActorRef =
+    participantAdmins.randomActor getOrElse(throw new Exception("no participantAdmins available"))
 
   private def oneOf(actors: Set[ActorRef]): ActorRef =
     Random.shuffle(actors.toSeq).headOption getOrElse(throw new Exception("no actors available"))
@@ -26,21 +32,24 @@ class ChatServiceCluster extends ChatService with ClusterEventReceiver {
   override val cluster = Cluster(context.system)
 
   override def onTerminated(actor: ActorRef): Unit = {
-    chatMsgPublishers = chatMsgPublishers.filterNot(_ == actor)
-    broadcastManagers = broadcastManagers.filterNot(_ == actor)
-    participantAdmins = participantAdmins.filterNot(_ == actor)
+    chatMsgPublishers.onTerminated(actor)
+    broadcastManagers.onTerminated(actor)
+    participantAdmins.onTerminated(actor)
   }
 
-  def receive = clusterEventReceive orElse terminationReceive orElse
-                terminationReceive orElse chatServiceReceive
+  def receive =
+    clusterEventReceive orElse terminationReceive orElse
+    terminationReceive orElse chatServiceReceive
 
   override def onMemberUp(member: Member): Unit = {
-    if (member.hasRole(ChatMsgPublisherRole))
-      getActor(member, ChatMsgPublisherRole)  foreach (chatMsgPublishers += _)
-    if (member.hasRole(BroadcastManagerRole))
-      getActor(member, BroadcastManagerRole) foreach (broadcastManagers += _)
-    if (member.hasRole(ParticipantAdministratorRole))
-      getActor(member, ParticipantAdministratorRole) foreach (participantAdmins += _)
+    chatMsgPublishers.onMemberUp(member)
+    broadcastManagers.onMemberUp(member)
+    participantAdmins.onMemberUp(member)
+  }
+  override def onMemberDown(member: Member): Unit = {
+    chatMsgPublishers.onMemberDown(member)
+    broadcastManagers.onMemberDown(member)
+    participantAdmins.onMemberDown(member)
   }
 }
 
