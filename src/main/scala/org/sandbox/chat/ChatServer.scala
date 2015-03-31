@@ -24,9 +24,7 @@ class ChatServer(override val shutdownSystem: Boolean) extends ChatService {
   private def createHttpService: ActorRef = {
     val chatServiceActions = new HttpChatServiceActionsImpl(self, context.system)
     val httpChatService =
-      context.actorOf(HttpChatService.props(
-        settings.httpService.interface, settings.httpService.port,
-        self, chatServiceActions))
+      context.actorOf(HttpChatService.props(chatServiceActions))
     waitForRunningService(httpChatService)
   }
 

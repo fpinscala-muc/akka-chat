@@ -19,7 +19,7 @@ import akka.util.Timeout
 trait Participants[T] {
 
   val system: ActorSystem
-  val chatServer: ActorRef
+  def chatServer: ActorRef
 
   implicit val timeout = Timeout(1 second)
 

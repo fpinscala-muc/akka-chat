@@ -3,7 +3,7 @@ package org.sandbox.chat
 import ChatServer.Participant
 import akka.actor.Props
 
-trait ParticipantAdministrator extends ParticipantAdministrating {
+class ParticipantAdministrator extends ParticipantAdministrating {
   def receive = participantReceive
 }
 

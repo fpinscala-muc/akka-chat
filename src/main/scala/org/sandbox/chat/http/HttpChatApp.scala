@@ -2,16 +2,13 @@ package org.sandbox.chat.http
 
 import org.sandbox.chat.ChatServer
 import org.sandbox.chat.ServiceActor
-import org.sandbox.chat.Settings
 
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
-import akka.actor.Props
 
 trait HttpChat {
 
   implicit val system = ActorSystem("chat-http")
-  val settings = Settings(system)
 
   def onReady: Unit = {}
 

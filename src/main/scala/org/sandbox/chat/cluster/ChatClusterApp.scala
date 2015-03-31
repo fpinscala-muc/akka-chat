@@ -12,4 +12,7 @@ object ChatClusterApp extends App {
 
     BroadcastManagerCluster.main(Array("2554"))
     BroadcastManagerCluster.main(Array.empty)
+
+    HttpChatServiceCluster.main(Array("2555"))
+    HttpChatServiceCluster.main(Array.empty)
 }

@@ -21,7 +21,6 @@ class ParticipantAdministratorCluster extends ParticipantAdministrating with Clu
 
   override def onMemberUp(member: Member): Unit = participantAdmins.onMemberUp(member)
   override def onMemberDown(member: Member): Unit = participantAdmins.onMemberDown(member)
-
   override def onTerminated(actor: ActorRef): Unit = participantAdmins.onTerminated(actor)
 }
 

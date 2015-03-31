@@ -1,6 +1,6 @@
 package org.sandbox.chat
 
-trait ChatMsgPublisher extends ChatMsgPublishing {
+class ChatMsgPublisher extends ChatMsgPublishing {
   def receive: Receive = chatMsgReceive
 }
 

@@ -18,7 +18,7 @@ class ChatClusterActors(role: ChatClusterRole,
     implicit val context: ActorContext, implicit val timeout: Timeout,
     implicit val log: LoggingAdapter)
 {
-  var clusterActors: Map[Member,ActorRef] = Map.empty
+  private var clusterActors: Map[Member,ActorRef] = Map.empty
 
   def randomActor: Option[ActorRef] =
     Random.shuffle(clusterActors.values.toSeq).headOption
