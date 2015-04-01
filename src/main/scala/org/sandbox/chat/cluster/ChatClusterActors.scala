@@ -25,8 +25,12 @@ class ChatClusterActors(role: ChatClusterRole,
 
   def onMemberUp(member: Member) = {
     if (member.hasRole(role)) {
-      val actor = getActor(member, role)
-      actor foreach (clusterActors += member -> _)
+      val actor = resolveActor(member, role)
+      actor foreach { a =>
+        clusterActors += member -> a
+        context watch a
+        log.info(s"watching ${a.path}")
+      }
     }
   }
 
@@ -38,24 +42,15 @@ class ChatClusterActors(role: ChatClusterRole,
 
   import context.dispatcher
 
-  private def getActor(member: Member, actorName: String): Option[ActorRef] = {
-    def resolveActor: Option[ActorRef] = {
-      val actorPath = RootActorPath(member.address) / "user" / actorName
-      log.info(s"selecting actor $actorPath")
-      val actorSelection = context.actorSelection(actorPath)
-      val actorF = actorSelection.resolveOne
-      actorF onFailure { case e =>
-        log.error(s"could not resolve actor $actorPath: ${e.getMessage}")
-      }
-      val actor = Try(Await.result(actorF, timeout.duration))
-      actor.toOption
+  private def resolveActor(member: Member, actorName: String): Option[ActorRef] = {
+    val actorPath = RootActorPath(member.address) / "user" / actorName
+    log.info(s"selecting actor $actorPath")
+    val actorSelection = context.actorSelection(actorPath)
+    val actorF = actorSelection.resolveOne
+    actorF onFailure {
+      case e => log.error(s"could not resolve actor $actorPath: ${e.getMessage}")
     }
-
-    val actor = resolveActor
-    actor foreach { a =>
-      context watch a
-      log.info(s"watching ${a.path}")
-    }
-    actor
+    val actor = Try(Await.result(actorF, timeout.duration))
+    actor.toOption
   }
 }

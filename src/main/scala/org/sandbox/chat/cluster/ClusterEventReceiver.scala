@@ -1,12 +1,8 @@
 package org.sandbox.chat.cluster
 
-import scala.concurrent.Await
-import scala.util.Try
-
 import akka.actor.Actor
 import akka.actor.ActorLogging
 import akka.actor.ActorRef
-import akka.actor.RootActorPath
 import akka.actor.Terminated
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent.CurrentClusterState
@@ -73,27 +69,4 @@ trait ClusterEventReceiver extends Actor with ActorLogging {
   }
 
   def onTerminated(actor: ActorRef): Unit
-
-  import context.dispatcher
-
-  def getActor(member: Member, actorName: String): Option[ActorRef] = {
-    def resolveActor: Option[ActorRef] = {
-      val actorPath = RootActorPath(member.address) / "user" / actorName
-      log.info(s"selecting actor $actorPath")
-      val actorSelection = context.actorSelection(actorPath)
-      val actorF = actorSelection.resolveOne
-      actorF onFailure { case e =>
-        log.error(s"could not resolve actor $actorPath: ${e.getMessage}")
-      }
-      val actor = Try(Await.result(actorF, timeout.duration))
-      actor.toOption
-    }
-
-    val actor = resolveActor
-    actor foreach { a =>
-      context watch a
-      log.info(s"watching ${a.path}")
-    }
-    actor
-  }
 }
