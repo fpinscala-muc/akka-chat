@@ -17,7 +17,24 @@ class ParticipantAdministratorCluster extends ParticipantAdministrating with Clu
   val participantAdmins =
     new ChatClusterActors(ParticipantAdministratorRole, context, timeout, log)
 
-  def receive: Receive = participantReceive orElse clusterEventReceive orElse terminationReceive
+  def receive: Receive =
+    receiveAndThen(update, distribute) orElse query orElse
+    clusterEventReceive orElse terminationReceive
+
+//  private val updateAndDistribute: Receive = {
+//    case msg if update.isDefinedAt(msg) =>
+//      update(msg)
+//      distribute(msg)
+//  }
+
+  private def receiveAndThen(receive: Receive, f: Any => Unit): Receive = {
+    case msg if receive.isDefinedAt(msg) =>
+      receive(msg)
+      f(msg)
+  }
+
+  private def distribute(msg: Any): Unit =
+    participantAdmins foreach { case (_, actor) => actor ! msg }
 
   override def onMemberUp(member: Member): Unit = participantAdmins.onMemberUp(member)
   override def onMemberDown(member: Member): Unit = participantAdmins.onMemberDown(member)

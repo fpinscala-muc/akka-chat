@@ -20,6 +20,9 @@ class ChatClusterActors(role: ChatClusterRole,
   def randomActor: Option[ActorRef] =
     Random.shuffle(clusterActors.values.toSeq).headOption
 
+  def foreach(f: ((Member,ActorRef)) => Unit): Unit =
+    clusterActors foreach f
+
   def onMemberUp(member: Member) = {
     if (member.hasRole(role)) {
       val actor = resolveActorForMember(member, role)

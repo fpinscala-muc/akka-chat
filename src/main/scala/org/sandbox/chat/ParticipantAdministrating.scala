@@ -12,7 +12,7 @@ trait ParticipantAdministrating extends Actor {
 
   def participantReceive: Receive = update orElse query
 
-  private def update: Receive = {
+  protected def update: Receive = {
     case join@Join(who) =>
       participants += who
       sender ! Ack(join)
@@ -21,7 +21,7 @@ trait ParticipantAdministrating extends Actor {
       sender ! Ack(leave)
   }
 
-  private def query: Receive = {
+  protected def query: Receive = {
     case isJoined@IsJoined(who, _) =>
       sender ! isJoined.copy(joined = participants.contains(who))
     case GetAllParticipants =>
