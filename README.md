@@ -37,7 +37,7 @@ You will see the respective commands as SSEs sent to the second console:
 
 ```
 ~$ curl -X GET http://localhost:8080/join/Achim
-~$ curl POST --data 'one line
+~$ curl -X POST --data 'one line
 another line' http://localhost:8080/contrib/Achim
 ~$ curl -X GET http://localhost:8080/join/Michael
 ~$ curl -X PUT --data 'one line again

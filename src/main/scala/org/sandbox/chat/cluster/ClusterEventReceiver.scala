@@ -30,6 +30,8 @@ trait ClusterEventReceiver extends Actor with ActorLogging {
 
   implicit val timeout: Timeout
 
+  import context.dispatcher
+
   // subscribe to cluster changes, MemberUp
   // re-subscribe when restart
   override def preStart(): Unit =
@@ -43,10 +45,12 @@ trait ClusterEventReceiver extends Actor with ActorLogging {
       val upMembers =
         state.members.filter(m => m.status == MemberStatus.Up && isNewMember(m))
       clusterMembers ++= upMembers
-      upMembers foreach onMemberUp
+      // give the cluster some time to become Up
+      context.system.scheduler.scheduleOnce(timeout.duration * 2)(upMembers foreach onMemberUp)
     case MemberUp(m) if isNewMember(m) =>
       clusterMembers += m
-      onMemberUp(m)
+      // give the cluster some time to become Up
+      context.system.scheduler.scheduleOnce(timeout.duration * 2)(onMemberUp(m))
     case UnreachableMember(m) =>
       clusterMembers -= m
       onMemberDown(m)

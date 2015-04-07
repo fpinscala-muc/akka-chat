@@ -13,23 +13,20 @@ import akka.util.Timeout
 
 trait ActorResolver {
 
-  implicit val context: ActorContext
-  implicit val timeout: Timeout
-  implicit val log: LoggingAdapter
-
-  import context.dispatcher
-
-  def resolveActor(actorPath: ActorPath): Try[ActorRef] = {
+  def resolveActor(actorPath: ActorPath)
+      (implicit context: ActorContext, timeout: Timeout, log: LoggingAdapter): Try[ActorRef] = {
     log.info(s"selecting actor $actorPath")
     val actorSelection = context.actorSelection(actorPath)
     val actorF = actorSelection.resolveOne
+    import context.dispatcher
     actorF onFailure {
       case e => log.error(s"could not resolve actor $actorPath: ${e.getMessage}")
     }
     Try(Await.result(actorF, timeout.duration))
   }
 
-  def resolveActorForMember(member: Member, actorName: String): Try[ActorRef] = {
+  def resolveActorForMember(member: Member, actorName: String)
+      (implicit context: ActorContext, timeout: Timeout, log: LoggingAdapter): Try[ActorRef] = {
     val actorPath = RootActorPath(member.address) / "user" / actorName
     resolveActor(actorPath)
   }

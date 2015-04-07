@@ -33,7 +33,7 @@ trait ChatService extends Actor with ServiceActor with ActorLogging {
   def participantAdmin: ActorRef
   def broadcastManager: ActorRef
 
-  val shutdownSystem: Boolean
+  def doShutdown: Unit
 
   private def publish(msg: ChatServerMsg) =
     chatMsgPublisher ! msg
@@ -65,12 +65,13 @@ trait ChatService extends Actor with ServiceActor with ActorLogging {
           val msg = shutdown.copy(participants = participants)
           publish(msg)
           requestor ! Ack(msg)
-          if (shutdownSystem) {
-            log.info(s"ChatServer ${self.path.name} to shutdown in ${500 millis} ...")
-            context.system.scheduler.scheduleOnce(500 millis)(context.system.shutdown)
-          } else {
-            context.stop(self)
-          }
+          doShutdown
+//          if (shutdownSystem) {
+//            log.info(s"ChatServer ${self.path.name} to shutdown in ${500 millis} ...")
+//            context.system.scheduler.scheduleOnce(500 millis)(context.system.shutdown)
+//          } else {
+//            context.stop(self)
+//          }
       }
   }
 

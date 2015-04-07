@@ -2,6 +2,8 @@ package org.sandbox.chat
 
 import java.util.Date
 
+import scala.concurrent.duration.DurationInt
+
 import org.sandbox.chat.http.HttpChatService
 import org.sandbox.chat.http.HttpChatServiceActionsImpl
 import org.sandbox.chat.sse.SseChatService
@@ -9,7 +11,7 @@ import org.sandbox.chat.sse.SseChatService
 import akka.actor.ActorRef
 import akka.actor.Props
 
-class ChatServer(override val shutdownSystem: Boolean) extends ChatService {
+class ChatServer(shutdownSystem: Boolean) extends ChatService {
   import ChatServer._
 
   override val chatMsgPublisher = context.actorOf(Props[ChatMsgPublisher])
@@ -20,6 +22,16 @@ class ChatServer(override val shutdownSystem: Boolean) extends ChatService {
   val sseChatService = createSseService
 
   def receive = chatServiceReceive
+
+  override def doShutdown = {
+    if (shutdownSystem) {
+      import context.dispatcher
+      log.info(s"ChatServer ${self.path.name} to shutdown in ${500 millis} ...")
+      context.system.scheduler.scheduleOnce(500 millis)(context.system.shutdown)
+    } else {
+      context.stop(self)
+    }
+  }
 
   private def createHttpService: ActorRef = {
     val chatServiceActions = new HttpChatServiceActionsImpl(self, context.system)

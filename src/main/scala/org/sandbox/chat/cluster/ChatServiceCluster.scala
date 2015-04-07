@@ -8,7 +8,7 @@ import akka.actor.ActorRef
 import akka.cluster.Cluster
 import akka.cluster.Member
 
-class ChatServiceCluster extends ChatService with ClusterEventReceiver {
+class ChatServiceCluster extends ChatService with ClusterEventReceiver with ActorResolver {
   val chatMsgPublishers =
     new ChatClusterActors(ChatMsgPublisherRole, context, timeout, log)
   override def chatMsgPublisher: ActorRef =
@@ -27,7 +27,12 @@ class ChatServiceCluster extends ChatService with ClusterEventReceiver {
   private def oneOf(actors: Set[ActorRef]): ActorRef =
     Random.shuffle(actors.toSeq).headOption getOrElse(throw new Exception("no actors available"))
 
-  override val shutdownSystem: Boolean = true
+  override def doShutdown = {
+    val reaperPath = self.path.root / "user" / ClusterReaperRole.name
+    val reaper =
+      resolveActor(reaperPath)(context, timeout, log) getOrElse(throw new Exception(s"reaper $reaperPath not found"))
+    reaper ! ChatClusterReaper.Shutdown
+  }
 
   override val cluster = Cluster(context.system)
 
