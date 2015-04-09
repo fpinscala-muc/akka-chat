@@ -6,7 +6,6 @@ object ChatMsgPublisherRole extends ChatClusterRole { val name = "chatMsgPublish
 object BroadcastManagerRole extends ChatClusterRole { val name = "broadcastManager" }
 object ParticipantAdministratorRole extends ChatClusterRole { val name = "participantAdmin" }
 object HttpChatServiceRole extends ChatClusterRole { val name = "httpChatService" }
-object ClusterMonitorRole extends ChatClusterRole { val name = "clusterMonitor" }
 object ClusterReaperRole extends ChatClusterRole { val name = "clusterReaper" }
 
 object ChatClusterRole {
