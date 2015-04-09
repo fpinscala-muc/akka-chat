@@ -51,3 +51,4 @@ The [Akka HTTP](http://doc.akka.io/docs/akka-stream-and-http-experimental/1.0-M4
 
 
 ![Alt text](https://snap-ci.com/fpinscala-muc/akka-chat/branch/master/build_image)
+Details: https://snap-ci.com/fpinscala-muc/akka-chat/branch/master
