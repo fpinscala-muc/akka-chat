@@ -39,9 +39,9 @@ libraryDependencies ++= Seq(
 testOptions += Tests.Argument(TestFrameworks.JUnit, "-v")
 
 resolvers ++= List(
-  Resolver.krasserm
+  Resolver.krasserm,
 //  Resolver.hseeberger,
-//  Resolver.patriknw
+  Resolver.patriknw
 )
 
 EclipseKeys.withSource := true
