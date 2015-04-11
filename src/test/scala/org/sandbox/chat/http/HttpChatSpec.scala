@@ -106,5 +106,5 @@ class HttpChatSpec extends BaseAkkaSpec with ScalaFutures with Eventually {
       .via(Http()
         .outgoingConnection(host = settings.httpService.interface,
                             port = settings.httpService.port))
-        .runWith(Sink.head())
+        .runWith(Sink.head)
 }
