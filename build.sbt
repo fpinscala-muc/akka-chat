@@ -4,8 +4,6 @@ version := "1.0"
 
 scalaVersion := "2.11.6"
 
-val akkaVersion = "2.3.9"
-val akkaStreamHttpVersion = "1.0-M4"
 
 libraryDependencies ++= Seq(
   Library.akkaActor,
@@ -22,13 +20,13 @@ libraryDependencies ++= Seq(
   Library.scalaTest       % "test",
   Library.scalaMock       % "test",
   Library.scalaCheck      % "test",
+  Library.akkaHttpCore,
+  Library.akkaHttp,
+  Library.akkaHttpJackson,
+  Library.akkaHttpSpray,
+  Library.akkaStream,
+  Library.akkaStreamTestkit % "test",
   "com.github.krasserm" %% "akka-persistence-kafka" % "0.3.4",
-  "com.typesafe.akka" %% "akka-http-core-experimental" % akkaStreamHttpVersion,
-  "com.typesafe.akka" %% "akka-http-experimental" % akkaStreamHttpVersion,
-  "com.typesafe.akka" %% "akka-http-java-jackson-experimental" % akkaStreamHttpVersion,
-  "com.typesafe.akka" %% "akka-http-spray-json-experimental" % akkaStreamHttpVersion,
-  "com.typesafe.akka" %% "akka-stream-experimental" % akkaStreamHttpVersion,
-  "com.typesafe.akka" %% "akka-stream-testkit-experimental" % akkaStreamHttpVersion,
   "com.sclasen" %% "akka-kafka" % "0.1.0",
   "junit" % "junit" % "4.12" % "test"
 //  "com.novocode" % "junit-interface" % "0.10" % "test"

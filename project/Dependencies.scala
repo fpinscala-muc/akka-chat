@@ -24,6 +24,11 @@ object Library {
   val akkaDataReplication  = "com.github.patriknw" %% "akka-data-replication"          % Version.akkaDataReplication
   val akkaHttp             = "com.typesafe.akka"   %% "akka-http-experimental"         % Version.akkaHttp
   val akkaHttpTestkit      = "com.typesafe.akka"   %% "akka-http-testkit-experimental" % Version.akkaHttp
+  val akkaHttpCore         = "com.typesafe.akka"   %% "akka-http-core-experimental"    % Version.akkaHttp
+  val akkaHttpJackson      = "com.typesafe.akka"   %% "akka-http-java-jackson-experimental" % Version.akkaHttp
+  val akkaHttpSpray        = "com.typesafe.akka"   %% "akka-http-spray-json-experimental" % Version.akkaHttp
+  val akkaStream           = "com.typesafe.akka"   %% "akka-stream-experimental"       % Version.akkaHttp
+  val akkaStreamTestkit    = "com.typesafe.akka"   %% "akka-stream-testkit-experimental" % Version.akkaHttp
   val akkaPersistenceMongo = "com.github.ironfish" %% "akka-persistence-mongo-casbah"  % Version.akkaPersistenceMongo
   val akkaSlf4j            = "com.typesafe.akka"   %% "akka-slf4j"                     % Version.akka
   val akkaSse              = "de.heikoseeberger"   %% "akka-sse"                       % Version.akkaSse
